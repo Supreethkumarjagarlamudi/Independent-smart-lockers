@@ -137,13 +137,42 @@ void loop() {
 
 ---
 
-## 🛠️ 2. Raspberry Pi OS Setup
+---
 
-Install **Raspberry Pi OS (Desktop / Bookworm)** using the Raspberry Pi Imager. Desktop version is required to run Chromium and display the kiosk UI.
+## 🛠️ 2. Fleet Installation via Docker Compose (Recommended)
 
-### install System Dependencies
-Open a terminal on your Raspberry Pi and install Node, NPM, Python3, and core web libraries:
+Using **Docker Containerization** allows you to deploy on multiple Raspberry Pis without manually compiling Python packages or managing differing versions of Node/NPM/Python on each machine. All libraries, including Nginx web services, database engines, OpenCV dependencies, and Python compilers, are isolated and locked inside the container images.
 
+### Installation Steps on a New Raspberry Pi:
+1. Burn **Raspberry Pi OS (with Desktop)** onto the SD card and boot the Pi.
+2. Open a terminal and clone the repository:
+   ```bash
+   git clone <YOUR_GIT_REPOSITORY_URL> smart-lockers
+   cd smart-lockers
+   ```
+3. Run the one-click installer script:
+   ```bash
+   sudo ./install_kiosk.sh
+   ```
+4. **Reboot the system** to apply autostart desktop overrides:
+   ```bash
+   sudo reboot
+   ```
+
+### What the installer handles:
+- Autodetects and installs **Docker** and **Docker Compose** on the host.
+- Compiles the React frontend using a multi-stage Node build and serves it via a lightweight, production-grade **Nginx** server container.
+- Sets up the FastAPI Python backend container, pre-installed with OpenCV systems, serial COM engines, and DB schemas.
+- Configures automatic desktop login for the user.
+- Creates an autostart desktop launcher linking to `start_kiosk.sh`.
+
+---
+
+## 📂 3. Manual Installation (Non-Docker Fallback)
+
+If you prefer to install node packages, virtual environments, and python wheels directly on the host OS:
+
+### A. Host Dependencies Setup:
 ```bash
 # Update repositories
 sudo apt update && sudo apt upgrade -y
@@ -151,40 +180,27 @@ sudo apt update && sudo apt upgrade -y
 # Install git, python utilities, and chromium browser
 sudo apt install -y git python3-pip python3-venv python3-dev chromium-browser curl
 
-# Install Node.js v18 or v20
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+# Install Node.js v23
+curl -fsSL https://deb.nodesource.com/setup_23.x | sudo -E bash -
 sudo apt install -y nodejs
 ```
 
----
-
-## 📂 3. Clone Repository & Install Services
-
-Clone your workspace code onto the Raspberry Pi:
-
+### B. App Setup:
 ```bash
 # Clone the repository
 git clone <YOUR_GIT_REPOSITORY_URL> smart-lockers
 cd smart-lockers
 
-# ----------------------------------------------------
-# A. Install Python API Backend
-# ----------------------------------------------------
+# 1. Setup Backend virtual environment
 cd apps/local-api
-# Create and activate virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
-
-# Install requirements (includes pyserial for communication)
 pip3 install -r requirements.txt
 cd ../..
 
-# ----------------------------------------------------
-# B. Install & Build Kiosk Frontend
-# ----------------------------------------------------
+# 2. Setup Frontend dependencies
 cd apps/kiosk-ui
 npm install
-# Compile the build to verify TypeScript/Vite compiles cleanly
 npm run build
 cd ../..
 ```
