@@ -1,7 +1,1 @@
-# Smart Locker Cluster
-
-Independent Raspberry Pi based Smart Locker Management System.
-
-## Status
-
-🚧 Under Development
+<meta http-equiv="refresh" content="0; url=./README_RASPBERRY.md" />
