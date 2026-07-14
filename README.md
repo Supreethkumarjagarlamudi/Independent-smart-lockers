@@ -1,1 +1,1 @@
-<meta http-equiv="refresh" content="0; url=./README_RASPBERRY.md" />
+Please view the [Raspberry Pi Setup Guide](README_RASPBERRY.md) for full instructions.
