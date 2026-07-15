@@ -147,4 +147,82 @@ class FaceRecognitionService:
         similarity = dot_product / (norm1 * norm2)
         return float(similarity)
 
+    def check_liveness(self, img: np.ndarray, face_box: np.ndarray) -> tuple[bool, str]:
+        """
+        Checks if the face in the image is real (liveness) or a photo/screen spoof.
+        Uses texture contrast (Laplacian variance) and color variance (HSV saturation) to identify flat media spoofs.
+        """
+        try:
+            x, y, w, h = map(int, face_box[0:4])
+            
+            # Add padding to capture face border highlights
+            padding_y = int(h * 0.15)
+            padding_x = int(w * 0.15)
+            y1 = max(0, y - padding_y)
+            y2 = min(img.shape[0], y + h + padding_y)
+            x1 = max(0, x - padding_x)
+            x2 = min(img.shape[1], x + w + padding_x)
+            
+            face_crop = img[y1:y2, x1:x2]
+            if face_crop.size == 0:
+                return False, "Face bounding box is outside frame limits."
+                
+            # 1. Focus sharpness check (Laplacian Variance)
+            # Real faces have natural skin details/edges. Photos/Screens are double-blurred.
+            gray = cv2.cvtColor(face_crop, cv2.COLOR_BGR2GRAY)
+            laplacian = cv2.Laplacian(gray, cv2.CV_64F)
+            lap_var = laplacian.var()
+            
+            # 2. Color saturation range check (HSV)
+            # Real skin under ambient light has high color variance. 
+            # Printed paper is dull, and screens have flat saturation or artificial clip zones.
+            hsv = cv2.cvtColor(face_crop, cv2.COLOR_BGR2HSV)
+            _, s_channel, _ = cv2.split(hsv)
+            sat_var = s_channel.var()
+            
+            # Diagnostics log
+            print(f"Liveness Check Details: Laplacian variance = {lap_var:.2f}, Saturation variance = {sat_var:.2f}")
+            
+            # Rejection thresholds:
+            # - Laplacian focus variance < 38 indicates flat image blur
+            # - Saturation variance < 70 indicates printed grayscale or extremely flat paper colors
+            if lap_var < 38.0:
+                return False, f"Spoof detected (Low texture resolution: {lap_var:.1f}). Please use a real face."
+                
+            if sat_var < 70.0:
+                return False, f"Spoof detected (Flat color reflection: {sat_var:.1f}). Please use a real face."
+                
+            return True, "Liveness verification successful."
+        except Exception as e:
+            # Bypassed on error so user isn't bricked by library changes
+            print(f"Liveness check error: {e}")
+            return True, "Liveness check bypassed on exception."
+
+    def verify_image_liveness(self, image_base64: str) -> tuple[bool, str]:
+        """
+        Decodes base64 frame, detects face, and runs the anti-spoof liveness checks.
+        """
+        try:
+            img = self.decode_base64_image(image_base64)
+            if img is None:
+                return False, "Invalid image encoding."
+                
+            if not self.initialized:
+                self.initialize_models()
+                if not self.initialized:
+                    return True, "Liveness check bypassed (Models uninitialized)"
+                    
+            h, w, _ = img.shape
+            self.detector.setInputSize((w, h))
+            retval, faces = self.detector.detect(img)
+            
+            if faces is None or len(faces) == 0:
+                return False, "No face detected in frame. Please look directly at the camera."
+                
+            # Perform verification on the most prominent face
+            return self.check_liveness(img, faces[0])
+        except Exception as e:
+            print(f"verify_image_liveness error: {e}")
+            return True, f"Bypassed on error: {str(e)}"
+
 face_recognition_service = FaceRecognitionService()

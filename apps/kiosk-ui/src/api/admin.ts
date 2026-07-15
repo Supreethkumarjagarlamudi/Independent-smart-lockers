@@ -213,6 +213,8 @@ export interface SystemConfigData {
     initialized: boolean;
     razorpay_key_id?: string | null;
     razorpay_key_secret?: string | null;
+    face_threshold?: number;
+    liveness_enabled?: boolean;
 }
 
 export interface SystemConfigUpdatePayload {
@@ -225,6 +227,8 @@ export interface SystemConfigUpdatePayload {
     grace_period: number;
     razorpay_key_id?: string | null;
     razorpay_key_secret?: string | null;
+    face_threshold?: number;
+    liveness_enabled?: boolean;
 }
 
 export async function getSystemConfig(): Promise<SystemConfigData> {

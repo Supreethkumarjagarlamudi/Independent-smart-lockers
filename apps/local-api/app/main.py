@@ -51,6 +51,18 @@ try:
 except Exception:
     pass
 
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE system_configs ADD COLUMN face_threshold FLOAT DEFAULT 0.80"))
+except Exception:
+    pass
+
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE system_configs ADD COLUMN liveness_enabled BOOLEAN DEFAULT 1"))
+except Exception:
+    pass
+
 
 # 3. Include Routers
 app.include_router(setup.router)

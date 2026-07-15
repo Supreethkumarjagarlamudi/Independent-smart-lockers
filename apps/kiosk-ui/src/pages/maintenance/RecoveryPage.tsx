@@ -124,6 +124,8 @@ export default function RecoveryPage() {
     const [configGracePeriod, setConfigGracePeriod] = useState(0);
     const [configRazorpayKeyId, setConfigRazorpayKeyId] = useState("");
     const [configRazorpayKeySecret, setConfigRazorpayKeySecret] = useState("");
+    const [configFaceThreshold, setConfigFaceThreshold] = useState(80); // percentage 80%
+    const [configLivenessEnabled, setConfigLivenessEnabled] = useState(true);
     const [showConfigKeySecret, setShowConfigKeySecret] = useState(false);
     const [configLoading, setConfigLoading] = useState(false);
 
@@ -339,6 +341,8 @@ export default function RecoveryPage() {
             setConfigGracePeriod(systemConfig.grace_period);
             setConfigRazorpayKeyId(systemConfig.razorpay_key_id || "");
             setConfigRazorpayKeySecret(systemConfig.razorpay_key_secret || "");
+            setConfigFaceThreshold(systemConfig.face_threshold ? Math.round(systemConfig.face_threshold * 100) : 80);
+            setConfigLivenessEnabled(systemConfig.liveness_enabled !== undefined ? systemConfig.liveness_enabled : true);
         }
     }, [systemConfig]);
 
@@ -356,7 +360,9 @@ export default function RecoveryPage() {
                 max_hours: configMaxHours,
                 grace_period: configGracePeriod,
                 razorpay_key_id: configRazorpayKeyId,
-                razorpay_key_secret: configRazorpayKeySecret
+                razorpay_key_secret: configRazorpayKeySecret,
+                face_threshold: configFaceThreshold / 100,
+                liveness_enabled: configLivenessEnabled
             });
             setSuccessMessage(res.message);
             await refreshData();
@@ -811,12 +817,12 @@ export default function RecoveryPage() {
                         </div>
                     </div>
 
-                    <div style={{ marginTop: "10px", padding: "14px", border: "1.5px solid #fed7aa", borderRadius: "12px", backgroundColor: "#fff7ed", display: "flex", flexDirection: "column", gap: "10px" }}>
-                        <span style={{ fontSize: "11px", fontWeight: "bold", color: "#c2410c" }}>💳 Razorpay Credentials {configHourlyRate > 0 ? "(Required)" : "(Optional)"}</span>
+                    <div style={{ marginTop: "10px", padding: "14px", border: "1px solid #e2e8f0", borderRadius: "12px", backgroundColor: "#f8fafc", display: "flex", flexDirection: "column", gap: "10px" }}>
+                        <span style={{ fontSize: "11px", fontWeight: "bold", color: "#334155" }}>Razorpay Credentials {configHourlyRate > 0 ? "(Required)" : "(Optional)"}</span>
                         
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                             <div>
-                                <label style={{ fontSize: "9px", fontWeight: 700, color: "#7c2d12", textTransform: "uppercase", display: "block", marginBottom: "3px" }}>Razorpay Key ID</label>
+                                <label style={{ fontSize: "9px", fontWeight: 700, color: "#64748b", textTransform: "uppercase", display: "block", marginBottom: "3px" }}>Razorpay Key ID</label>
                                 <input
                                     type="text"
                                     placeholder="rzp_test_..."
@@ -826,7 +832,7 @@ export default function RecoveryPage() {
                                 />
                             </div>
                             <div>
-                                <label style={{ fontSize: "9px", fontWeight: 700, color: "#7c2d12", textTransform: "uppercase", display: "block", marginBottom: "3px" }}>Razorpay Key Secret</label>
+                                <label style={{ fontSize: "9px", fontWeight: 700, color: "#64748b", textTransform: "uppercase", display: "block", marginBottom: "3px" }}>Razorpay Key Secret</label>
                                 <div className="relative" style={{ display: "flex", alignItems: "center" }}>
                                     <input
                                         type={showConfigKeySecret ? "text" : "password"}
@@ -844,6 +850,39 @@ export default function RecoveryPage() {
                                     </button>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Face Settings */}
+                    <div style={{ marginTop: "10px", padding: "14px", border: "1px solid #e2e8f0", borderRadius: "12px", backgroundColor: "#f8fafc", display: "flex", flexDirection: "column", gap: "10px" }}>
+                        <span style={{ fontSize: "11px", fontWeight: "bold", color: "#334155" }}>Face Recognition Security</span>
+                        
+                        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <label style={{ fontSize: "9px", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Face Similarity Match Threshold</label>
+                                <span style={{ fontSize: "11px", fontWeight: "bold", color: "#2563eb" }}>{configFaceThreshold}%</span>
+                            </div>
+                            <input 
+                                type="range"
+                                min="50"
+                                max="95"
+                                value={configFaceThreshold}
+                                onChange={(e) => setConfigFaceThreshold(Number(e.target.value))}
+                                className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                            />
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
+                            <input 
+                                type="checkbox"
+                                id="liveness_enabled_admin"
+                                checked={configLivenessEnabled}
+                                onChange={(e) => setConfigLivenessEnabled(e.target.checked)}
+                                style={{ cursor: "pointer" }}
+                            />
+                            <label htmlFor="liveness_enabled_admin" style={{ fontSize: "11px", fontWeight: "semibold", color: "#334155", cursor: "pointer" }}>
+                                Enable Anti-Spoofing (Liveness Detection)
+                            </label>
                         </div>
                     </div>
 

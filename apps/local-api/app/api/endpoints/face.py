@@ -59,6 +59,14 @@ def register_face(req: FaceRegisterRequest, db: Session = Depends(get_db)):
     if tx.payment_status != "PAID":
         raise HTTPException(status_code=400, detail="Cannot register face before payment is completed.")
 
+    # Check liveness if enabled in config
+    config = db.query(SystemConfig).first()
+    liveness_enabled = config.liveness_enabled if (config and config.liveness_enabled is not None) else True
+    if liveness_enabled:
+        is_live, liveness_msg = face_recognition_service.verify_image_liveness(req.image)
+        if not is_live:
+            raise HTTPException(status_code=400, detail=liveness_msg)
+
     # Extract face embedding
     success, embedding, msg = face_recognition_service.extract_face_embedding(req.image)
     if not success or embedding is None:
@@ -92,6 +100,14 @@ def register_face(req: FaceRegisterRequest, db: Session = Depends(get_db)):
 
 @router.post("/verify")
 def verify_face(req: FaceVerifyRequest, db: Session = Depends(get_db)):
+    # Check liveness if enabled in config
+    config = db.query(SystemConfig).first()
+    liveness_enabled = config.liveness_enabled if (config and config.liveness_enabled is not None) else True
+    if liveness_enabled:
+        is_live, liveness_msg = face_recognition_service.verify_image_liveness(req.image)
+        if not is_live:
+            raise HTTPException(status_code=400, detail=liveness_msg)
+
     # 1. Extract embedding from camera frame
     success, embedding, msg = face_recognition_service.extract_face_embedding(req.image)
     if not success or embedding is None:
@@ -112,7 +128,8 @@ def verify_face(req: FaceVerifyRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="No active lockers found for matching.")
         
     # 3. Match embeddings and check thresholds
-    threshold = settings.FACE_MATCH_THRESHOLD
+    config = db.query(SystemConfig).first()
+    threshold = config.face_threshold if (config and config.face_threshold is not None) else settings.FACE_MATCH_THRESHOLD
     matched_transactions = []
     
     for tx in active_txs:

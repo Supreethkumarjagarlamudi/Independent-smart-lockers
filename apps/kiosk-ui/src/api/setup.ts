@@ -27,6 +27,8 @@ export interface SetupConfigPayload {
     razorpay_key_id?: string;
     razorpay_key_secret?: string;
     admin_password?: string;
+    face_threshold?: number;
+    liveness_enabled?: boolean;
 }
 
 export async function getCameras(): Promise<CameraInfo[]> {

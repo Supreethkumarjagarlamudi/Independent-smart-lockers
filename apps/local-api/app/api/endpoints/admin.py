@@ -328,6 +328,8 @@ class UpdateConfigRequest(BaseModel):
     grace_period: int
     razorpay_key_id: Optional[str] = ""
     razorpay_key_secret: Optional[str] = ""
+    face_threshold: Optional[float] = 0.80
+    liveness_enabled: Optional[bool] = True
 
 @router.post("/config/update")
 def update_system_config(req: UpdateConfigRequest, db: Session = Depends(get_db)):
@@ -344,6 +346,8 @@ def update_system_config(req: UpdateConfigRequest, db: Session = Depends(get_db)
     config.grace_period = req.grace_period
     config.razorpay_key_id = req.razorpay_key_id
     config.razorpay_key_secret = req.razorpay_key_secret
+    config.face_threshold = req.face_threshold if req.face_threshold is not None else 0.80
+    config.liveness_enabled = req.liveness_enabled if req.liveness_enabled is not None else True
     
     db.add(config)
     db.add(SystemLog(

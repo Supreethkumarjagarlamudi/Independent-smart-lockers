@@ -57,6 +57,8 @@ export default function SetupPage() {
     const [selectedCamera, setSelectedCamera] = useState("");
     const [isTestingCamera, setIsTestingCamera] = useState(false);
     const [cameraScanning, setCameraScanning] = useState(false);
+    const [faceThreshold, setFaceThreshold] = useState(80); // percentage 80%
+    const [livenessEnabled, setLivenessEnabled] = useState(true);
     const videoRef = useRef<HTMLVideoElement>(null);
     const mediaStreamRef = useRef<MediaStream | null>(null);
 
@@ -194,7 +196,9 @@ export default function SetupPage() {
                     locker_prefix: lockerPrefix,
                     razorpay_key_id: razorpayKeyId,
                     razorpay_key_secret: razorpayKeySecret,
-                    admin_password: adminPassword
+                    admin_password: adminPassword,
+                    face_threshold: faceThreshold / 100,
+                    liveness_enabled: livenessEnabled
                 };
                 
                 await initializeCluster(payload);
@@ -388,6 +392,35 @@ export default function SetupPage() {
                         </select>
                     </div>
                 )}
+
+                {/* Slim settings controls directly inside camera detection card */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", maxWidth: "400px", marginTop: "16px", borderTop: "1px solid #f1f5f9", paddingTop: "16px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <label className="text-sm font-semibold text-slate-700">Face Match Threshold</label>
+                        <span className="text-sm font-bold text-blue-600">{faceThreshold}%</span>
+                    </div>
+                    <input 
+                        type="range"
+                        min="50"
+                        max="95"
+                        value={faceThreshold}
+                        onChange={(e) => setFaceThreshold(Number(e.target.value))}
+                        className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                    />
+                    
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
+                        <input 
+                            type="checkbox"
+                            id="liveness_enabled_setup"
+                            checked={livenessEnabled}
+                            onChange={(e) => setLivenessEnabled(e.target.checked)}
+                            className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
+                        />
+                        <label htmlFor="liveness_enabled_setup" className="text-sm font-semibold text-slate-700 cursor-pointer">
+                            Enable Anti-Spoofing
+                        </label>
+                    </div>
+                </div>
             </div>
 
             {/* Webcam video preview */}
@@ -740,6 +773,8 @@ export default function SetupPage() {
                     { label: "Cluster / Station", value: clusterName && stationName ? `${clusterName} (${stationName})` : "-" },
                     { label: "Location / Timezone", value: `${location || "-"} (${timezone})` },
                     { label: "Camera Hardware", value: selectedCamera || "None" },
+                    { label: "Face Threshold", value: `${faceThreshold}%` },
+                    { label: "Anti-Spoofing (Liveness)", value: livenessEnabled ? "Enabled" : "Disabled" },
                     { label: "Hardware Controllers", value: `${controllersCount} modules` },
                     { label: "Lockers Installed", value: `${lockersCount} lockers total` },
                     { label: "Free Minutes & Rate", value: `${freeMinutes} mins, ₹${hourlyRate}/hr` },
@@ -753,7 +788,7 @@ export default function SetupPage() {
                             justifyContent: "space-between", 
                             alignItems: "center",
                             padding: "12px 16px", 
-                            borderBottom: idx === 7 ? "none" : "1px solid #e2e8f0" 
+                            borderBottom: idx === 9 ? "none" : "1px solid #e2e8f0" 
                         }}
                     >
                         <span style={{ fontWeight: 600, color: "#64748b", fontSize: "14px" }}>{item.label}</span>
@@ -875,7 +910,7 @@ export default function SetupPage() {
 
                 <div className="h-6" />
 
-                <div className="py-2" style={{ marginBottom: "32px" }}>
+                <div className="py-2" style={{ marginBottom: "32px", maxHeight: "410px", overflowY: "auto", paddingRight: "4px" }}>
                     {currentStep === 1 && renderClusterInfo()}
                     {currentStep === 2 && renderCameraDetection()}
                     {currentStep === 3 && renderControllerDiscovery()}

@@ -27,6 +27,8 @@ class ConfigSetupSchema(BaseModel):
     razorpay_key_id: Optional[str] = ""
     razorpay_key_secret: Optional[str] = ""
     admin_password: Optional[str] = "admin123"
+    face_threshold: Optional[float] = 0.80
+    liveness_enabled: Optional[bool] = True
 
 class CameraInfo(BaseModel):
     id: str
@@ -123,6 +125,8 @@ def initialize_cluster(schema: ConfigSetupSchema, db: Session = Depends(get_db))
             razorpay_key_id=schema.razorpay_key_id,
             razorpay_key_secret=schema.razorpay_key_secret,
             admin_password=schema.admin_password if schema.admin_password else "admin123",
+            face_threshold=schema.face_threshold if schema.face_threshold is not None else 0.80,
+            liveness_enabled=schema.liveness_enabled if schema.liveness_enabled is not None else True,
             initialized=True
         )
         db.add(config)

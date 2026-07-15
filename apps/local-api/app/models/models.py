@@ -25,6 +25,8 @@ class SystemConfig(Base):
     
     initialized = Column(Boolean, default=False)
     admin_password = Column(String, default="admin123")
+    face_threshold = Column(Float, default=0.80)
+    liveness_enabled = Column(Boolean, default=True)
     
     # Optional credentials for integrated payments
     razorpay_key_id = Column(String, nullable=True)
