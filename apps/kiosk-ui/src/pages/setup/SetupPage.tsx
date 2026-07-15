@@ -422,7 +422,7 @@ export default function SetupPage() {
 
     const renderControllerDiscovery = () => (
         <div style={{ display: "flex", flexDirection: "column", gap: "24px", width: "100%" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "between", borderBottom: "1px solid #e2e8f0", paddingBottom: "16px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #e2e8f0", paddingBottom: "16px" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                     <label className="text-sm font-semibold text-slate-700">Target Controller Boards Count</label>
                     <p className="text-xs text-slate-400">Total physical relay controller modules connected.</p>
@@ -449,7 +449,7 @@ export default function SetupPage() {
                     gap: "16px" 
                 }}
             >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "between" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "12px", color: "#1e293b" }}>
                         <Cpu size={24} className="text-blue-500" />
                         <span style={{ fontSize: "18px", fontWeight: 600 }}>Hardware Controllers Discovered</span>
@@ -475,7 +475,7 @@ export default function SetupPage() {
                                 style={{ 
                                     display: "flex", 
                                     alignItems: "center", 
-                                    justifyContent: "between", 
+                                    justifyContent: "space-between", 
                                     padding: "16px", 
                                     borderRadius: "12px", 
                                     backgroundColor: "#ffffff", 
@@ -650,13 +650,11 @@ export default function SetupPage() {
                 </div>
             </div>
         </div>
-    );
-
-    const renderSecurityCredentials = () => (
+    );    const renderSecurityCredentials = () => (
         <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
             {/* Admin Password card */}
             <div style={{ padding: "20px", border: "1px solid #e2e8f0", borderRadius: "16px", backgroundColor: "#f8fafc", display: "flex", flexDirection: "column", gap: "12px" }}>
-                <span className="text-sm font-bold text-slate-800">🔒 Admin Dashboard Authentication</span>
+                <span className="text-sm font-bold text-slate-800">Admin Dashboard Authentication</span>
                 <p className="text-xs text-slate-500">Configure the password used to access the administrator maintenance dashboard.</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                     <label className="text-xs font-bold text-slate-600">Admin Password (min. 6 characters)</label>
@@ -666,8 +664,8 @@ export default function SetupPage() {
                             placeholder="admin123"
                             value={adminPassword}
                             onChange={(e) => setAdminPassword(e.target.value)}
-                            className="w-full h-11 pl-4 pr-12 rounded-xl border border-slate-300 bg-white text-sm font-mono"
-                            style={{ paddingRight: "48px" }}
+                            className="w-full h-11 rounded-xl border border-slate-300 bg-white text-sm font-mono"
+                            style={{ paddingLeft: "16px", paddingRight: "48px" }}
                         />
                         <button 
                             type="button"
@@ -681,10 +679,10 @@ export default function SetupPage() {
             </div>
 
             {/* Razorpay credentials card */}
-            <div style={{ padding: "20px", border: "1.5px solid #fed7aa", borderRadius: "16px", backgroundColor: "#fff7ed", display: "flex", flexDirection: "column", gap: "14px" }}>
+            <div style={{ padding: "20px", border: "1px solid #e2e8f0", borderRadius: "16px", backgroundColor: "#f8fafc", display: "flex", flexDirection: "column", gap: "14px" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                    <span className="text-sm font-bold text-orange-850">💳 Razorpay API Credentials {hourlyRate > 0 ? "(Required)" : "(Optional)"}</span>
-                    <p className="text-xs text-orange-700">Enter API keys to enable UPI QR payments. Optional if locker pricing is completely free.</p>
+                    <span className="text-sm font-bold text-slate-800">Razorpay API Credentials {hourlyRate > 0 ? "(Required)" : "(Optional)"}</span>
+                    <p className="text-xs text-slate-500">Enter API keys to enable UPI QR payments. Optional if locker pricing is completely free.</p>
                 </div>
                 
                 <div style={{ display: "flex", flexFlow: "row wrap", gap: "16px" }}>
@@ -695,7 +693,8 @@ export default function SetupPage() {
                             placeholder="rzp_test_xxxxxxxxxx"
                             value={razorpayKeyId}
                             onChange={(e) => setRazorpayKeyId(e.target.value)}
-                            className="w-full h-11 px-4 rounded-xl border border-slate-300 bg-white text-sm"
+                            className="w-full h-11 rounded-xl border border-slate-300 bg-white text-sm"
+                            style={{ paddingLeft: "16px", paddingRight: "16px" }}
                         />
                     </div>
                     
@@ -707,8 +706,8 @@ export default function SetupPage() {
                                 placeholder="••••••••••••••••"
                                 value={razorpayKeySecret}
                                 onChange={(e) => setRazorpayKeySecret(e.target.value)}
-                                className="w-full h-11 pl-4 pr-12 rounded-xl border border-slate-300 bg-white text-sm font-mono"
-                                style={{ paddingRight: "48px" }}
+                                className="w-full h-11 rounded-xl border border-slate-300 bg-white text-sm font-mono"
+                                style={{ paddingLeft: "16px", paddingRight: "48px" }}
                             />
                             <button 
                                 type="button"
