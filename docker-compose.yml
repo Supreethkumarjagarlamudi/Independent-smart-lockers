@@ -14,6 +14,8 @@ services:
       - ./apps/local-api/.env:/app/.env
       # Mount dev tree to access USB Serial controllers and Webcams dynamically
       - /dev:/dev
+      - /sys:/sys:ro
+    privileged: true
     restart: always
 
   frontend:
