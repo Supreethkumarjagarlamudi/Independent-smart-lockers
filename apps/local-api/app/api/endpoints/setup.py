@@ -47,23 +47,46 @@ def get_setup_status(db: Session = Depends(get_db)):
 @router.get("/cameras", response_model=List[CameraInfo])
 def discover_cameras():
     cameras = []
-    
-    # 1. Scan for real Linux USB camera video devices
-    import glob
     import os
-    if os.path.exists("/dev"):
-        devs = sorted(glob.glob("/dev/video*"))
-        for dev in devs:
-            name = os.path.basename(dev)
-            cameras.append(CameraInfo(id=dev, name=f"USB Camera ({name})", status="Ready"))
+    
+    # 1. Scan /sys/class/video4linux (Linux/Pi standard path for connected video devices)
+    v4l_dir = "/sys/class/video4linux"
+    if os.path.exists(v4l_dir):
+        try:
+            for vdev in sorted(os.listdir(v4l_dir)):
+                name_file = os.path.join(v4l_dir, vdev, "name")
+                if os.path.exists(name_file):
+                    with open(name_file, "r") as f:
+                        dev_name = f.read().strip()
+                    
+                    # Filter out metadata nodes, codecs, and ISP virtual devices
+                    lower_name = dev_name.lower()
+                    if any(word in lower_name for word in ["codec", "isp", "metadata", "fd", "video-mux", "broadcom"]):
+                        continue
+                    
+                    dev_path = f"/dev/{vdev}"
+                    cameras.append(CameraInfo(id=dev_path, name=f"{dev_name} ({vdev})", status="Ready"))
+        except Exception as e:
+            print(f"Error scanning video4linux: {e}")
             
-    # 2. Add default/testing camera options, ensuring "Random USB Camera" is included
+    # 2. Fallback check for standard /dev/video* devices if v4l_dir scan failed
+    if not cameras and os.path.exists("/dev"):
+        import glob
+        try:
+            devs = sorted(glob.glob("/dev/video*"))
+            for dev in devs:
+                name = os.path.basename(dev)
+                cameras.append(CameraInfo(id=dev, name=f"USB Camera ({name})", status="Ready"))
+        except Exception as e:
+            print(f"Error scanning /dev/video: {e}")
+
+    # 3. Add test fallback list ONLY if no real connected devices were detected (keeps dev environment working)
     if not cameras:
         cameras.append(CameraInfo(id="0", name="Random USB Camera", status="Ready"))
         cameras.append(CameraInfo(id="1", name="Integrated FaceTime HD Camera", status="Ready"))
         cameras.append(CameraInfo(id="2", name="Logitech Webcam C920", status="Ready"))
     else:
-        # If we have real hardware, still append "Random USB Camera" as a test fallback option
+        # If real cameras are connected, only show the real ones + "Random USB Camera" for testing
         cameras.append(CameraInfo(id="mock_random", name="Random USB Camera", status="Ready"))
         
     return cameras

@@ -765,7 +765,10 @@ export default function SetupPage() {
     );
 
     const renderSavingState = () => (
-        <div className="flex flex-col items-center py-10 text-center">
+        <div 
+            className="flex flex-col items-center justify-center py-12 text-center"
+            style={{ minHeight: "450px", width: "100%" }}
+        >
             {saveProgress < 100 ? (
                 <>
                     <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-blue-50 text-blue-500">
