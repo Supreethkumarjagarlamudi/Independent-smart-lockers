@@ -1,3 +1,5 @@
+import { Check } from "lucide-react";
+
 interface SetupProgressProps {
     currentStep: number;
     totalSteps: number;
@@ -11,6 +13,7 @@ const STEP_LABELS = [
     "Controllers",
     "Lockers",
     "Pricing",
+    "Security",
     "Review"
 ];
 
@@ -26,7 +29,7 @@ export function SetupProgress({
                 
                 {/* Horizontal progress bar line behind circles */}
                 <div 
-                    className="absolute left-4 right-4 h-0.5 bg-slate-100 -z-10" 
+                    className="absolute left-4 right-4 h-10 bg-slate-100 -z-10" 
                     style={{ top: "16px" }}
                 >
                     <div 
@@ -58,12 +61,12 @@ export function SetupProgress({
                             <div 
                                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 z-10 ${bgClass}`}
                             >
-                                {stepNum}
+                                {isCompleted ? <Check size={16} strokeWidth={3} /> : stepNum}
                             </div>
                             
                             {/* Label */}
                             <span 
-                                className={`text-[10px] sm:text-xs font-semibold mt-2 text-center transition-colors duration-300 ${
+                                className={`text-[8px] sm:text-xs font-medium mt-2 text-center transition-colors duration-300 ${
                                     isActive ? "text-blue-600 font-bold" : isCompleted ? "text-slate-700" : "text-slate-400"
                                 }`}
                             >

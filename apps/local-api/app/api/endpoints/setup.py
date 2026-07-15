@@ -26,6 +26,7 @@ class ConfigSetupSchema(BaseModel):
     locker_prefix: Optional[str] = "A"
     razorpay_key_id: Optional[str] = ""
     razorpay_key_secret: Optional[str] = ""
+    admin_password: Optional[str] = "admin123"
 
 class CameraInfo(BaseModel):
     id: str
@@ -87,6 +88,7 @@ def initialize_cluster(schema: ConfigSetupSchema, db: Session = Depends(get_db))
             lockers_count=schema.lockers_count,
             razorpay_key_id=schema.razorpay_key_id,
             razorpay_key_secret=schema.razorpay_key_secret,
+            admin_password=schema.admin_password if schema.admin_password else "admin123",
             initialized=True
         )
         db.add(config)

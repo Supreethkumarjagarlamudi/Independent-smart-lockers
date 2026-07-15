@@ -25,7 +25,7 @@ import type {
     SetupConfigPayload 
 } from "../../api/setup";
 
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 8;
 
 export default function SetupPage() {
     const navigate = useNavigate();
@@ -78,6 +78,8 @@ export default function SetupPage() {
     const [razorpayKeyId, setRazorpayKeyId] = useState("");
     const [razorpayKeySecret, setRazorpayKeySecret] = useState("");
     const [showKeySecret, setShowKeySecret] = useState(false);
+    const [adminPassword, setAdminPassword] = useState("admin123");
+    const [showAdminPassword, setShowAdminPassword] = useState(false);
 
     // Start/Stop Webcam
     const startCamera = async () => {
@@ -159,6 +161,18 @@ export default function SetupPage() {
             }
         }
 
+        if (currentStep === 6) {
+            // Validate Security & Credentials
+            if (!adminPassword || adminPassword.length < 6) {
+                showToast("Admin password must be at least 6 characters long.", "error");
+                return;
+            }
+            if (hourlyRate > 0 && (!razorpayKeyId || !razorpayKeySecret)) {
+                showToast("Razorpay credentials are required when Hourly Rate is greater than zero.", "error");
+                return;
+            }
+        }
+
         if (currentStep < TOTAL_STEPS - 1) {
             setCurrentStep(currentStep + 1);
         } else {
@@ -179,7 +193,8 @@ export default function SetupPage() {
                     lockers_count: Number(lockersCount),
                     locker_prefix: lockerPrefix,
                     razorpay_key_id: razorpayKeyId,
-                    razorpay_key_secret: razorpayKeySecret
+                    razorpay_key_secret: razorpayKeySecret,
+                    admin_password: adminPassword
                 };
                 
                 await initializeCluster(payload);
@@ -634,10 +649,42 @@ export default function SetupPage() {
                     </div>
                 </div>
             </div>
+        </div>
+    );
 
-            <div style={{ marginTop: "8px", padding: "20px", border: "1.5px solid #fed7aa", borderRadius: "16px", backgroundColor: "#fff7ed", display: "flex", flexDirection: "column", gap: "16px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+    const renderSecurityCredentials = () => (
+        <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
+            {/* Admin Password card */}
+            <div style={{ padding: "20px", border: "1px solid #e2e8f0", borderRadius: "16px", backgroundColor: "#f8fafc", display: "flex", flexDirection: "column", gap: "12px" }}>
+                <span className="text-sm font-bold text-slate-800">🔒 Admin Dashboard Authentication</span>
+                <p className="text-xs text-slate-500">Configure the password used to access the administrator maintenance dashboard.</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <label className="text-xs font-bold text-slate-600">Admin Password (min. 6 characters)</label>
+                    <div className="relative">
+                        <input 
+                            type={showAdminPassword ? "text" : "password"}
+                            placeholder="admin123"
+                            value={adminPassword}
+                            onChange={(e) => setAdminPassword(e.target.value)}
+                            className="w-full h-11 pl-4 pr-12 rounded-xl border border-slate-300 bg-white text-sm font-mono"
+                            style={{ paddingRight: "48px" }}
+                        />
+                        <button 
+                            type="button"
+                            onClick={() => setShowAdminPassword(!showAdminPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500 hover:text-slate-700 cursor-pointer"
+                        >
+                            {showAdminPassword ? "Hide" : "Show"}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Razorpay credentials card */}
+            <div style={{ padding: "20px", border: "1.5px solid #fed7aa", borderRadius: "16px", backgroundColor: "#fff7ed", display: "flex", flexDirection: "column", gap: "14px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                     <span className="text-sm font-bold text-orange-850">💳 Razorpay API Credentials {hourlyRate > 0 ? "(Required)" : "(Optional)"}</span>
+                    <p className="text-xs text-orange-700">Enter API keys to enable UPI QR payments. Optional if locker pricing is completely free.</p>
                 </div>
                 
                 <div style={{ display: "flex", flexFlow: "row wrap", gap: "16px" }}>
@@ -697,7 +744,8 @@ export default function SetupPage() {
                     { label: "Hardware Controllers", value: `${controllersCount} modules` },
                     { label: "Lockers Installed", value: `${lockersCount} lockers total` },
                     { label: "Free Minutes & Rate", value: `${freeMinutes} mins, ₹${hourlyRate}/hr` },
-                    { label: "Razorpay Gateway", value: hourlyRate > 0 ? (razorpayKeyId ? "Configured (DB)" : "Unconfigured ⚠️") : "Not Required (Free)" }
+                    { label: "Razorpay Gateway", value: hourlyRate > 0 ? (razorpayKeyId ? "Configured (DB)" : "Unconfigured ⚠️") : "Not Required (Free)" },
+                    { label: "Admin Password", value: adminPassword ? "••••••" : "Default" }
                 ].map((item, idx) => (
                     <div 
                         key={idx} 
@@ -706,7 +754,7 @@ export default function SetupPage() {
                             justifyContent: "space-between", 
                             alignItems: "center",
                             padding: "12px 16px", 
-                            borderBottom: idx === 6 ? "none" : "1px solid #e2e8f0" 
+                            borderBottom: idx === 7 ? "none" : "1px solid #e2e8f0" 
                         }}
                     >
                         <span style={{ fontWeight: 600, color: "#64748b", fontSize: "14px" }}>{item.label}</span>
@@ -831,7 +879,8 @@ export default function SetupPage() {
                     {currentStep === 3 && renderControllerDiscovery()}
                     {currentStep === 4 && renderLockerDiscovery()}
                     {currentStep === 5 && renderPricingPolicy()}
-                    {currentStep === 6 && renderReview()}
+                    {currentStep === 6 && renderSecurityCredentials()}
+                    {currentStep === 7 && renderReview()}
                 </div>
 
                 <SetupNavigation
