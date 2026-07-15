@@ -802,29 +802,51 @@ export default function SetupPage() {
     const renderSavingState = () => (
         <div 
             className="flex flex-col items-center justify-center py-12 text-center"
-            style={{ minHeight: "450px", width: "100%" }}
+            style={{ minHeight: "450px", width: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}
         >
             {saveProgress < 100 ? (
                 <>
-                    <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-blue-50 text-blue-500">
+                    <div 
+                        className="bg-blue-50 text-blue-500" 
+                        style={{ 
+                            width: "96px", 
+                            height: "96px", 
+                            borderRadius: "50%", 
+                            display: "flex", 
+                            alignItems: "center", 
+                            justifyContent: "center",
+                            margin: "0 auto"
+                        }}
+                    >
                         <RefreshCw size={44} className="animate-spin" />
                     </div>
-                    <h2 className="mt-8 text-3xl font-bold text-slate-900">Saving Configuration</h2>
-                    <p className="mt-3 text-slate-500">Please wait while the databases and locker states are initialized...</p>
-                    <div className="mt-8 w-64 h-2 rounded-full bg-slate-100 overflow-hidden border border-slate-200">
+                    <h2 className="text-3xl font-bold text-slate-900" style={{ marginTop: "32px" }}>Saving Configuration</h2>
+                    <p className="text-slate-500" style={{ marginTop: "12px" }}>Please wait while the databases and locker states are initialized...</p>
+                    <div className="bg-slate-100 border border-slate-200" style={{ width: "256px", height: "8px", borderRadius: "9999px", overflow: "hidden", marginTop: "32px", margin: "32px auto 0 auto" }}>
                         <div 
                             className="h-full bg-blue-600 transition-all duration-200"
-                            style={{ width: `${saveProgress}%` }}
+                            style={{ width: `${saveProgress}%`, height: "100%" }}
                         />
                     </div>
                 </>
             ) : (
                 <>
-                    <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-green-50 text-green-500">
+                    <div 
+                        className="bg-green-50 text-green-500" 
+                        style={{ 
+                            width: "96px", 
+                            height: "96px", 
+                            borderRadius: "50%", 
+                            display: "flex", 
+                            alignItems: "center", 
+                            justifyContent: "center",
+                            margin: "0 auto"
+                        }}
+                    >
                         <CheckCircle2 size={54} className="animate-bounce" />
                     </div>
-                    <h2 className="mt-8 text-3xl font-bold text-slate-900">Setup Complete!</h2>
-                    <p className="mt-3 text-slate-500">Your Smart Locker Cluster is ready to use. Restarting application...</p>
+                    <h2 className="text-3xl font-bold text-slate-900" style={{ marginTop: "32px" }}>Setup Complete!</h2>
+                    <p className="text-slate-500" style={{ marginTop: "12px" }}>Your Smart Locker Cluster is ready to use. Restarting application...</p>
                 </>
             )}
         </div>
