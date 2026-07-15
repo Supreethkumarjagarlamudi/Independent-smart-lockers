@@ -76,11 +76,13 @@ def create_payment(req: CreatePaymentRequest, db: Session = Depends(get_db)):
                     "description": f"Overdue {target_locker_id} {tx_id}" if req.flow_type == "RETRIEVE" else f"Session {tx_id}",
                     "close_by": int(time.time() + 600)  # expires in 10 minutes
                 })
-                upi_link = qr_data["string"]
-                payment_ref = qr_data["id"]
+                upi_link = qr_data.get("image_content") or qr_data.get("image_url") or qr_data.get("string")
+                payment_ref = qr_data.get("id")
+                if not upi_link:
+                    raise Exception("Razorpay API did not return image_content, image_url, or string in response.")
             except Exception as e:
-                # Log Razorpay error and fallback
-                print(f"Razorpay QR Code generation error, falling back to mock UPI link: {e}")
+                # Raise the error directly so the operator/user sees why Razorpay QR creation failed
+                raise HTTPException(status_code=400, detail=f"Razorpay API Error: {str(e)}")
         
         if not upi_link:
             # Fallback mock UPI
@@ -109,11 +111,16 @@ def create_payment(req: CreatePaymentRequest, db: Session = Depends(get_db)):
         
         db.commit()
         
+        is_test_mode = True
+        if key_id and key_id.startswith("rzp_live_"):
+            is_test_mode = False
+            
         return {
             "transaction_id": tx_id,
             "upi_link": upi_link,
             "amount": req.amount,
-            "locker_id": target_locker_id
+            "locker_id": target_locker_id,
+            "is_test_mode": is_test_mode
         }
     except HTTPException:
         raise
@@ -158,6 +165,12 @@ def simulate_confirm(req: SimulateConfirmRequest, db: Session = Depends(get_db))
     Simulates the webhook callback from the payment gateway to mark a transaction as PAID.
     In a real production environment, this is replaced by an API webhook endpoint.
     """
+    # Enforce test mode check to block simulation in production
+    config = db.query(SystemConfig).first()
+    key_id = config.razorpay_key_id if (config and config.razorpay_key_id) else settings.RAZORPAY_KEY_ID
+    if key_id and key_id.startswith("rzp_live_"):
+        raise HTTPException(status_code=403, detail="Payment simulation is disabled in Live Mode.")
+
     tx = db.query(Transaction).filter(Transaction.transaction_id == req.transaction_id).first()
     if not tx:
         raise HTTPException(status_code=404, detail="Transaction not found.")

@@ -32,6 +32,7 @@ export default function DepositPage() {
 
     // Payment details
     const [paymentData, setPaymentData] = useState<PaymentCreateResponse | null>(null);
+    const [isSimulating, setIsSimulating] = useState(false);
 
     // Camera and Scan status
     const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
@@ -128,6 +129,20 @@ export default function DepositPage() {
             }
         }
         navigate("/home");
+    };
+
+    const handleSimulateSuccess = async () => {
+        if (!paymentData) return;
+        setIsSimulating(true);
+        setErrorMessage("");
+        try {
+            await simulateConfirmPayment(paymentData.transaction_id);
+            setStep("FACE_REG");
+        } catch (err: any) {
+            setErrorMessage(err.message || "Failed to simulate payment confirmation.");
+        } finally {
+            setIsSimulating(false);
+        }
     };
 
     // Handle proceeding to payment from duration step
@@ -467,7 +482,9 @@ export default function DepositPage() {
         }
 
         const qrDataUrl = paymentData 
-            ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(paymentData.upi_link)}`
+            ? (paymentData.upi_link.startsWith("http") 
+                ? paymentData.upi_link 
+                : `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(paymentData.upi_link)}`)
             : "";
 
         return (
@@ -501,17 +518,29 @@ export default function DepositPage() {
                             margin: "20px 0", 
                             padding: "12px", 
                             borderRadius: "16px", 
-                            backgroundColor: "#f8fafc", 
+                            backgroundColor: "#ffffff", 
                             border: "1px solid #f1f5f9", 
                             display: "flex", 
                             alignItems: "center", 
                             justifyContent: "center", 
                             width: "192px", 
-                            height: "192px" 
+                            height: "192px",
+                            overflow: "hidden",
+                            position: "relative"
                         }}
                     >
                         {qrDataUrl ? (
-                            <img src={qrDataUrl} alt="UPI QR Code" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                            <img 
+                                src={qrDataUrl} 
+                                alt="UPI QR Code" 
+                                style={{ 
+                                    width: "100%", 
+                                    height: "100%", 
+                                    objectFit: "contain",
+                                    transform: paymentData?.upi_link?.startsWith("http") ? "scale(3.64)" : "none",
+                                    transformOrigin: "center"
+                                }} 
+                            />
                         ) : (
                             <RefreshCw size={24} className="animate-spin text-slate-300" />
                         )}
@@ -529,6 +558,15 @@ export default function DepositPage() {
                 )}
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", maxWidth: "340px" }}>
+                    {paymentData?.is_test_mode && (
+                        <button
+                            onClick={handleSimulateSuccess}
+                            disabled={isSimulating}
+                            className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                        >
+                            {isSimulating ? "Simulating..." : "Simulate Payment Success (Test)"}
+                        </button>
+                    )}
                     <button
                         onClick={() => setStep("DURATION")}
                         className="w-full h-12 border border-slate-200 rounded-xl font-bold text-slate-500 hover:bg-slate-50 flex items-center justify-center gap-2 cursor-pointer transition-colors"

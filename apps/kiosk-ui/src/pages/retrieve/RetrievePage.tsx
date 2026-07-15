@@ -10,7 +10,7 @@ import { KioskShell } from "../../components/layout/KioskShell";
 import { SessionTimeout } from "../../components/common/SessionTimeout";
 import { verifyFace } from "../../api/face";
 import { unlockLocker, releaseLocker } from "../../api/lockers";
-import { createPayment, verifyPayment, cancelPayment } from "../../api/payment";
+import { createPayment, verifyPayment, simulateConfirmPayment, cancelPayment } from "../../api/payment";
 
 type RetrieveStep = "FACE_RECOG" | "SELECT_LOCKER" | "PAYMENT" | "OPENING" | "RETRIEVE" | "SUCCESS";
 
@@ -27,6 +27,7 @@ export default function RetrievePage() {
     // Overdue payment states
     const [overdueFee, setOverdueFee] = useState(0);
     const [overduePaymentData, setOverduePaymentData] = useState<any | null>(null);
+    const [isSimulating, setIsSimulating] = useState(false);
 
     // Multiple locker matches list
     const [matchedLockersList, setMatchedLockersList] = useState<any[]>([]);
@@ -141,6 +142,20 @@ export default function RetrievePage() {
             }
         }
         navigate("/home");
+    };
+
+    const handleSimulateSuccess = async () => {
+        if (!overduePaymentData) return;
+        setIsSimulating(true);
+        setErrorMessage("");
+        try {
+            await simulateConfirmPayment(overduePaymentData.transaction_id);
+            setStep("OPENING");
+        } catch (err: any) {
+            setErrorMessage(err.message || "Failed to simulate payment confirmation.");
+        } finally {
+            setIsSimulating(false);
+        }
     };
 
     const captureAndVerify = async () => {
@@ -572,7 +587,9 @@ export default function RetrievePage() {
         }
 
         const qrDataUrl = overduePaymentData 
-            ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(overduePaymentData.upi_link)}`
+            ? (overduePaymentData.upi_link.startsWith("http") 
+                ? overduePaymentData.upi_link 
+                : `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(overduePaymentData.upi_link)}`)
             : "";
 
         return (
@@ -606,17 +623,29 @@ export default function RetrievePage() {
                             margin: "20px 0", 
                             padding: "12px", 
                             borderRadius: "16px", 
-                            backgroundColor: "#f8fafc", 
+                            backgroundColor: "#ffffff", 
                             border: "1px solid #f1f5f9", 
                             display: "flex", 
                             alignItems: "center", 
                             justifyContent: "center", 
                             width: "192px", 
-                            height: "192px" 
+                            height: "192px",
+                            overflow: "hidden",
+                            position: "relative"
                         }}
                     >
                         {qrDataUrl ? (
-                            <img src={qrDataUrl} alt="UPI QR Code" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                            <img 
+                                src={qrDataUrl} 
+                                alt="UPI QR Code" 
+                                style={{ 
+                                    width: "100%", 
+                                    height: "100%", 
+                                    objectFit: "contain",
+                                    transform: overduePaymentData?.upi_link?.startsWith("http") ? "scale(1.95)" : "none",
+                                    transformOrigin: "center"
+                                }} 
+                            />
                         ) : (
                             <RefreshCw size={24} className="animate-spin text-slate-300" />
                         )}
@@ -634,6 +663,15 @@ export default function RetrievePage() {
                 )}
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", maxWidth: "340px" }}>
+                    {overduePaymentData?.is_test_mode && (
+                        <button
+                            onClick={handleSimulateSuccess}
+                            disabled={isSimulating}
+                            className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                        >
+                            {isSimulating ? "Simulating..." : "Simulate Payment Success (Test)"}
+                        </button>
+                    )}
                     <button
                         onClick={() => {
                             if (matchedLockersList.length > 1) {

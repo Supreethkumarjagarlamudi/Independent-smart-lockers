@@ -5,6 +5,7 @@ export interface PaymentCreateResponse {
     upi_link: string;
     amount: number;
     locker_id: string;
+    is_test_mode?: boolean;
 }
 
 export interface PaymentVerifyResponse {

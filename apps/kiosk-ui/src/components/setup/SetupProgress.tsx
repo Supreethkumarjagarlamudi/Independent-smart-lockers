@@ -29,7 +29,7 @@ export function SetupProgress({
                 
                 {/* Horizontal progress bar line behind circles */}
                 <div 
-                    className="absolute left-4 right-4 h-10 bg-slate-100 -z-10" 
+                    className="absolute left-4 right-4 h-1 bg-slate-100 -z-10" 
                     style={{ top: "16px" }}
                 >
                     <div 
