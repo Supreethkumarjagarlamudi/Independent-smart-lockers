@@ -199,18 +199,6 @@ export default function DepositPage() {
         return () => stopCamera();
     }, [step]);
 
-    const simulatePayment = async () => {
-        if (!paymentData) return;
-        setIsLoading(true);
-        try {
-            await simulateConfirmPayment(paymentData.transaction_id);
-            setStep("FACE_REG");
-        } catch (err: any) {
-            setErrorMessage(err.message || "Simulation failed.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
 
     // Capture & register face, then trigger unlock
     const captureAndRegister = async (customPaymentData?: PaymentCreateResponse | null) => {
@@ -541,14 +529,6 @@ export default function DepositPage() {
                 )}
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", maxWidth: "340px" }}>
-                    {/* Dev simulation button */}
-                    <button
-                        onClick={simulatePayment}
-                        className="w-full h-11 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 font-bold text-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-                    >
-                        Simulate Payment Success (Demo)
-                    </button>
-
                     <button
                         onClick={() => setStep("DURATION")}
                         className="w-full h-12 border border-slate-200 rounded-xl font-bold text-slate-500 hover:bg-slate-50 flex items-center justify-center gap-2 cursor-pointer transition-colors"

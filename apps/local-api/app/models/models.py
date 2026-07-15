@@ -25,6 +25,11 @@ class SystemConfig(Base):
     
     initialized = Column(Boolean, default=False)
     admin_password = Column(String, default="admin123")
+    
+    # Optional credentials for integrated payments
+    razorpay_key_id = Column(String, nullable=True)
+    razorpay_key_secret = Column(String, nullable=True)
+    
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
 

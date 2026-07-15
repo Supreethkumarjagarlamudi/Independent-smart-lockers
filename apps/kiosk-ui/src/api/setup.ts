@@ -24,6 +24,8 @@ export interface SetupConfigPayload {
     controllers_count: number;
     lockers_count: number;
     locker_prefix?: string;
+    razorpay_key_id?: string;
+    razorpay_key_secret?: string;
 }
 
 export async function getCameras(): Promise<CameraInfo[]> {

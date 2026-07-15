@@ -122,6 +122,9 @@ export default function RecoveryPage() {
     const [configHourlyRate, setConfigHourlyRate] = useState(0);
     const [configMaxHours, setConfigMaxHours] = useState(0);
     const [configGracePeriod, setConfigGracePeriod] = useState(0);
+    const [configRazorpayKeyId, setConfigRazorpayKeyId] = useState("");
+    const [configRazorpayKeySecret, setConfigRazorpayKeySecret] = useState("");
+    const [showConfigKeySecret, setShowConfigKeySecret] = useState(false);
     const [configLoading, setConfigLoading] = useState(false);
 
     // Detailed transactions states
@@ -334,6 +337,8 @@ export default function RecoveryPage() {
             setConfigHourlyRate(systemConfig.hourly_rate);
             setConfigMaxHours(systemConfig.max_hours);
             setConfigGracePeriod(systemConfig.grace_period);
+            setConfigRazorpayKeyId(systemConfig.razorpay_key_id || "");
+            setConfigRazorpayKeySecret(systemConfig.razorpay_key_secret || "");
         }
     }, [systemConfig]);
 
@@ -350,6 +355,8 @@ export default function RecoveryPage() {
                 hourly_rate: configHourlyRate,
                 max_hours: configMaxHours,
                 grace_period: configGracePeriod,
+                razorpay_key_id: configRazorpayKeyId,
+                razorpay_key_secret: configRazorpayKeySecret
             });
             setSuccessMessage(res.message);
             await refreshData();
@@ -801,6 +808,42 @@ export default function RecoveryPage() {
                                 min="1"
                                 style={{ width: "100%", height: "38px", border: "1.5px solid #e2e8f0", borderRadius: "10px", padding: "0 10px", fontSize: "13px", color: "#334155" }}
                             />
+                        </div>
+                    </div>
+
+                    <div style={{ marginTop: "10px", padding: "14px", border: "1.5px solid #fed7aa", borderRadius: "12px", backgroundColor: "#fff7ed", display: "flex", flexDirection: "column", gap: "10px" }}>
+                        <span style={{ fontSize: "11px", fontWeight: "bold", color: "#c2410c" }}>💳 Razorpay Credentials {configHourlyRate > 0 ? "(Required)" : "(Optional)"}</span>
+                        
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                            <div>
+                                <label style={{ fontSize: "9px", fontWeight: 700, color: "#7c2d12", textTransform: "uppercase", display: "block", marginBottom: "3px" }}>Razorpay Key ID</label>
+                                <input
+                                    type="text"
+                                    placeholder="rzp_test_..."
+                                    value={configRazorpayKeyId}
+                                    onChange={(e) => setConfigRazorpayKeyId(e.target.value)}
+                                    style={{ width: "100%", height: "34px", border: "1.5px solid #cbd5e1", borderRadius: "8px", padding: "0 8px", fontSize: "12px", color: "#334155", backgroundColor: "#fff" }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: "9px", fontWeight: 700, color: "#7c2d12", textTransform: "uppercase", display: "block", marginBottom: "3px" }}>Razorpay Key Secret</label>
+                                <div className="relative" style={{ display: "flex", alignItems: "center" }}>
+                                    <input
+                                        type={showConfigKeySecret ? "text" : "password"}
+                                        placeholder="••••••••••••••••"
+                                        value={configRazorpayKeySecret}
+                                        onChange={(e) => setConfigRazorpayKeySecret(e.target.value)}
+                                        style={{ width: "100%", height: "34px", border: "1.5px solid #cbd5e1", borderRadius: "8px", padding: "0 40px 0 8px", fontSize: "12px", color: "#334155", backgroundColor: "#fff" }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowConfigKeySecret(!showConfigKeySecret)}
+                                        style={{ position: "absolute", right: "8px", background: "none", border: "none", color: "#64748b", fontSize: "10px", fontWeight: "bold", cursor: "pointer" }}
+                                    >
+                                        {showConfigKeySecret ? "Hide" : "Show"}
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

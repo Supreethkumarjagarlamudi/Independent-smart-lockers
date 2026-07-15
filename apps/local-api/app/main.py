@@ -31,11 +31,23 @@ app.add_middleware(
 # declarative schema generation ensures the DB is instantly set up on start.
 Base.metadata.create_all(bind=engine)
 
-# Run lightweight database migration to add admin_password column if it doesn't exist
+# Run lightweight database migration to add dynamic columns if they don't exist
 from sqlalchemy import text
 try:
     with engine.begin() as conn:
         conn.execute(text("ALTER TABLE system_configs ADD COLUMN admin_password VARCHAR DEFAULT 'admin123'"))
+except Exception:
+    pass
+
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE system_configs ADD COLUMN razorpay_key_id VARCHAR"))
+except Exception:
+    pass
+
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE system_configs ADD COLUMN razorpay_key_secret VARCHAR"))
 except Exception:
     pass
 

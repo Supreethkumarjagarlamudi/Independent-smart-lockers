@@ -10,7 +10,7 @@ import { KioskShell } from "../../components/layout/KioskShell";
 import { SessionTimeout } from "../../components/common/SessionTimeout";
 import { verifyFace } from "../../api/face";
 import { unlockLocker, releaseLocker } from "../../api/lockers";
-import { createPayment, verifyPayment, simulateConfirmPayment, cancelPayment } from "../../api/payment";
+import { createPayment, verifyPayment, cancelPayment } from "../../api/payment";
 
 type RetrieveStep = "FACE_RECOG" | "SELECT_LOCKER" | "PAYMENT" | "OPENING" | "RETRIEVE" | "SUCCESS";
 
@@ -221,18 +221,6 @@ export default function RetrievePage() {
         }
     };
 
-    const simulateOverduePaymentSuccess = async () => {
-        if (!overduePaymentData) return;
-        setIsLoading(true);
-        try {
-            await simulateConfirmPayment(overduePaymentData.transaction_id);
-            setStep("OPENING");
-        } catch (err: any) {
-            setErrorMessage(err.message || "Simulation failed.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
 
     // Pure Client-Side Liveness & Movement Frame Differencing Loop
     useEffect(() => {
@@ -646,13 +634,6 @@ export default function RetrievePage() {
                 )}
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", maxWidth: "340px" }}>
-                    <button
-                        onClick={simulateOverduePaymentSuccess}
-                        className="w-full h-11 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 font-bold text-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-                    >
-                        Simulate Payment Success (Demo)
-                    </button>
-
                     <button
                         onClick={() => {
                             if (matchedLockersList.length > 1) {

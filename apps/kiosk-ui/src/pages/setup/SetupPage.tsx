@@ -74,6 +74,11 @@ export default function SetupPage() {
     const [maxHours, setMaxHours] = useState(24);
     const [gracePeriod, setGracePeriod] = useState(10);
 
+    // Razorpay credentials states
+    const [razorpayKeyId, setRazorpayKeyId] = useState("");
+    const [razorpayKeySecret, setRazorpayKeySecret] = useState("");
+    const [showKeySecret, setShowKeySecret] = useState(false);
+
     // Start/Stop Webcam
     const startCamera = async () => {
         try {
@@ -172,7 +177,9 @@ export default function SetupPage() {
                     camera_model: selectedCamera,
                     controllers_count: Number(controllersCount),
                     lockers_count: Number(lockersCount),
-                    locker_prefix: lockerPrefix
+                    locker_prefix: lockerPrefix,
+                    razorpay_key_id: razorpayKeyId,
+                    razorpay_key_secret: razorpayKeySecret
                 };
                 
                 await initializeCluster(payload);
@@ -627,6 +634,46 @@ export default function SetupPage() {
                     </div>
                 </div>
             </div>
+
+            <div style={{ marginTop: "8px", padding: "20px", border: "1.5px solid #fed7aa", borderRadius: "16px", backgroundColor: "#fff7ed", display: "flex", flexDirection: "column", gap: "16px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <span className="text-sm font-bold text-orange-850">💳 Razorpay API Credentials {hourlyRate > 0 ? "(Required)" : "(Optional)"}</span>
+                </div>
+                
+                <div style={{ display: "flex", flexFlow: "row wrap", gap: "16px" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: "1 1 220px" }}>
+                        <label className="text-xs font-bold text-slate-600">Razorpay Key ID</label>
+                        <input 
+                            type="text"
+                            placeholder="rzp_test_xxxxxxxxxx"
+                            value={razorpayKeyId}
+                            onChange={(e) => setRazorpayKeyId(e.target.value)}
+                            className="w-full h-11 px-4 rounded-xl border border-slate-300 bg-white text-sm"
+                        />
+                    </div>
+                    
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: "1 1 220px" }}>
+                        <label className="text-xs font-bold text-slate-600">Razorpay Key Secret</label>
+                        <div className="relative">
+                            <input 
+                                type={showKeySecret ? "text" : "password"}
+                                placeholder="••••••••••••••••"
+                                value={razorpayKeySecret}
+                                onChange={(e) => setRazorpayKeySecret(e.target.value)}
+                                className="w-full h-11 pl-4 pr-12 rounded-xl border border-slate-300 bg-white text-sm font-mono"
+                                style={{ paddingRight: "48px" }}
+                            />
+                            <button 
+                                type="button"
+                                onClick={() => setShowKeySecret(!showKeySecret)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500 hover:text-slate-700 cursor-pointer"
+                            >
+                                {showKeySecret ? "Hide" : "Show"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 
@@ -650,6 +697,7 @@ export default function SetupPage() {
                     { label: "Hardware Controllers", value: `${controllersCount} modules` },
                     { label: "Lockers Installed", value: `${lockersCount} lockers total` },
                     { label: "Free Minutes & Rate", value: `${freeMinutes} mins, ₹${hourlyRate}/hr` },
+                    { label: "Razorpay Gateway", value: hourlyRate > 0 ? (razorpayKeyId ? "Configured (DB)" : "Unconfigured ⚠️") : "Not Required (Free)" }
                 ].map((item, idx) => (
                     <div 
                         key={idx} 
@@ -658,7 +706,7 @@ export default function SetupPage() {
                             justifyContent: "space-between", 
                             alignItems: "center",
                             padding: "12px 16px", 
-                            borderBottom: idx === 5 ? "none" : "1px solid #e2e8f0" 
+                            borderBottom: idx === 6 ? "none" : "1px solid #e2e8f0" 
                         }}
                     >
                         <span style={{ fontWeight: 600, color: "#64748b", fontSize: "14px" }}>{item.label}</span>

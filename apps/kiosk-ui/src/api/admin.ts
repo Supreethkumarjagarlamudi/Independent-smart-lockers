@@ -211,6 +211,8 @@ export interface SystemConfigData {
     controllers_count: number;
     lockers_count: number;
     initialized: boolean;
+    razorpay_key_id?: string | null;
+    razorpay_key_secret?: string | null;
 }
 
 export interface SystemConfigUpdatePayload {
@@ -221,6 +223,8 @@ export interface SystemConfigUpdatePayload {
     hourly_rate: number;
     max_hours: number;
     grace_period: number;
+    razorpay_key_id?: string | null;
+    razorpay_key_secret?: string | null;
 }
 
 export async function getSystemConfig(): Promise<SystemConfigData> {

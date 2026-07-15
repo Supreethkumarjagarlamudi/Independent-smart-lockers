@@ -78,7 +78,16 @@ def get_system_status(db: Session = Depends(get_db)):
                 break
         controllers_online = all_online
         
-    payment_online = True  # Mock gateway status check
+    # Validate payment configuration. If hourly rate > 0, Razorpay keys must be present.
+    from app.config.config import settings
+    payment_online = True
+    if config and config.hourly_rate > 0:
+        has_db_keys = bool(config.razorpay_key_id and config.razorpay_key_secret)
+        has_env_keys = bool(settings.RAZORPAY_KEY_ID and settings.RAZORPAY_KEY_SECRET)
+        payment_online = has_db_keys or has_env_keys
+    elif not config:
+        payment_online = False
+
     network_online = True  # Mock cluster network connectivity check
     
     return {
@@ -317,6 +326,8 @@ class UpdateConfigRequest(BaseModel):
     hourly_rate: float
     max_hours: int
     grace_period: int
+    razorpay_key_id: Optional[str] = ""
+    razorpay_key_secret: Optional[str] = ""
 
 @router.post("/config/update")
 def update_system_config(req: UpdateConfigRequest, db: Session = Depends(get_db)):
@@ -331,6 +342,8 @@ def update_system_config(req: UpdateConfigRequest, db: Session = Depends(get_db)
     config.hourly_rate = req.hourly_rate
     config.max_hours = req.max_hours
     config.grace_period = req.grace_period
+    config.razorpay_key_id = req.razorpay_key_id
+    config.razorpay_key_secret = req.razorpay_key_secret
     
     db.add(config)
     db.add(SystemLog(

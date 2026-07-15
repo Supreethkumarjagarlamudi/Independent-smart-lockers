@@ -53,9 +53,13 @@ def create_payment(req: CreatePaymentRequest, db: Session = Depends(get_db)):
         merchant_name = config.cluster_name if config else settings.UPI_MERCHANT_NAME
         
         # 3. Construct UPI Deep Link / Razorpay UPI QR
-        key_id = settings.RAZORPAY_KEY_ID
-        key_secret = settings.RAZORPAY_KEY_SECRET
+        key_id = config.razorpay_key_id if (config and config.razorpay_key_id) else settings.RAZORPAY_KEY_ID
+        key_secret = config.razorpay_key_secret if (config and config.razorpay_key_secret) else settings.RAZORPAY_KEY_SECRET
         
+        # Enforce that keys cannot be empty if amount is paid (amount > 0)
+        if req.amount > 0 and (not key_id or not key_secret):
+            raise HTTPException(status_code=400, detail="Payment Gateway is not configured. Please contact the administrator.")
+            
         upi_link = None
         payment_ref = None
         
@@ -124,8 +128,9 @@ def verify_payment(req: VerifyPaymentRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Transaction not found.")
         
     # Check status with Razorpay if keys are configured
-    key_id = settings.RAZORPAY_KEY_ID
-    key_secret = settings.RAZORPAY_KEY_SECRET
+    config = db.query(SystemConfig).first()
+    key_id = config.razorpay_key_id if (config and config.razorpay_key_id) else settings.RAZORPAY_KEY_ID
+    key_secret = config.razorpay_key_secret if (config and config.razorpay_key_secret) else settings.RAZORPAY_KEY_SECRET
     
     if key_id and key_secret and tx.payment_status == "PENDING" and tx.payment_ref and tx.payment_ref != "MOCK_REF":
         try:
