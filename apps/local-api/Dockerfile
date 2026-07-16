@@ -12,12 +12,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libwebp-dev \
     libpng-dev \
     libtiff-dev \
+    python3-numpy \
+    python3-opencv \
     && rm -rf /var/lib/apt/lists/*
 
+# Map Python module path to use the system-installed packages
+ENV PYTHONPATH=/usr/lib/python3/dist-packages
+
 COPY requirements.txt .
-# 1. Install heavy ARM-binary packages via Piwheels index to save compile time
-RUN pip install --no-cache-dir --timeout 100 --index-url https://pypi.org/simple --extra-index-url https://www.piwheels.org/simple numpy==1.26.4 opencv-python-headless==4.8.1.78
-# 2. Install pure Python packages from requirements.txt via standard PyPI (retains default hash integrity)
+# Install pure Python packages from requirements.txt via standard PyPI
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
