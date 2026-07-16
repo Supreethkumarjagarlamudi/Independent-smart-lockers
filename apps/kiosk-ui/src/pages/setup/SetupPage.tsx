@@ -5,8 +5,7 @@ import {
     Camera, 
     Layers, 
     CheckCircle2, 
-    RefreshCw,
-    Activity
+    RefreshCw
 } from "lucide-react";
 
 import { SetupLayout } from "../../components/setup/SetupLayout";
