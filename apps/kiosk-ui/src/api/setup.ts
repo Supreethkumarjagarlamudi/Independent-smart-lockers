@@ -8,6 +8,8 @@ export interface CameraInfo {
 
 export interface ControllerInfo {
     id: string;
+    name: string;
+    port: string;
     status: string;
 }
 

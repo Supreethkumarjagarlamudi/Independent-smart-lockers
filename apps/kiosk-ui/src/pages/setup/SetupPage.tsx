@@ -136,6 +136,9 @@ export default function SetupPage() {
         try {
             const list = await getControllers(controllersCount);
             setControllers(list);
+            if (list.length > 0) {
+                setControllersCount(list.length);
+            }
         } catch (err) {
             console.error(err);
         } finally {
@@ -455,20 +458,9 @@ export default function SetupPage() {
 
     const renderControllerDiscovery = () => (
         <div style={{ display: "flex", flexDirection: "column", gap: "24px", width: "100%" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #e2e8f0", paddingBottom: "16px" }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                    <label className="text-sm font-semibold text-slate-700">Target Controller Boards Count</label>
-                    <p className="text-xs text-slate-400">Total physical relay controller modules connected.</p>
-                </div>
-                <input 
-                    type="number" 
-                    min="1" 
-                    max="10"
-                    value={controllersCount} 
-                    onChange={(e) => setControllersCount(Math.max(1, Number(e.target.value)))}
-                    className="w-24 h-12 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center font-bold bg-slate-50"
-                    style={{ paddingLeft: "12px", paddingRight: "12px" }}
-                />
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px", borderBottom: "1px solid #e2e8f0", paddingBottom: "16px" }}>
+                <label className="text-sm font-semibold text-slate-700">Relay Controller Discovery</label>
+                <p className="text-xs text-slate-400">The system automatically discovers connected serial controllers. No manual count input is required.</p>
             </div>
 
             <div 
@@ -485,7 +477,7 @@ export default function SetupPage() {
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "12px", color: "#1e293b" }}>
                         <Cpu size={24} className="text-blue-500" />
-                        <span style={{ fontSize: "18px", fontWeight: 600 }}>Hardware Controllers Discovered</span>
+                        <span style={{ fontSize: "18px", fontWeight: 600 }}>Hardware Controllers Discovered ({controllersCount})</span>
                     </div>
                     <button 
                         onClick={scanControllers}
@@ -502,28 +494,38 @@ export default function SetupPage() {
                     </div>
                 ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                        {controllers.map((ctrl) => (
-                            <div 
-                                key={ctrl.id} 
-                                style={{ 
-                                    display: "flex", 
-                                    alignItems: "center", 
-                                    justifyContent: "space-between", 
-                                    padding: "16px", 
-                                    borderRadius: "12px", 
-                                    backgroundColor: "#ffffff", 
-                                    border: "1px solid #f1f5f9" 
-                                }}
-                            >
-                                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                                    <Activity size={18} className="text-green-500" />
-                                    <span className="font-semibold text-slate-800">{ctrl.id}</span>
-                                </div>
-                                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-600 border border-green-200/50">
-                                    {ctrl.status}
-                                </span>
+                        {controllers.length === 0 ? (
+                            <div className="text-center p-6 text-slate-400 text-sm">
+                                No controllers discovered. Plug in your USB serial controller and click the scan icon above.
                             </div>
-                        ))}
+                        ) : (
+                            controllers.map((ctrl) => (
+                                <div 
+                                    key={ctrl.id} 
+                                    style={{ 
+                                        display: "flex", 
+                                        alignItems: "center", 
+                                        justifyContent: "space-between", 
+                                        padding: "16px", 
+                                        borderRadius: "12px", 
+                                        backgroundColor: "#ffffff", 
+                                        border: "1px solid #f1f5f9" 
+                                    }}
+                                >
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                                        <span className="font-semibold text-slate-800 text-sm">{ctrl.name}</span>
+                                        <span className="text-slate-400 text-xs font-mono">{ctrl.port}</span>
+                                    </div>
+                                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                        ctrl.status === 'Online' 
+                                            ? 'bg-green-50 text-green-600 border border-green-200/50' 
+                                            : 'bg-red-50 text-red-600 border border-red-200/50'
+                                    }`}>
+                                        {ctrl.status}
+                                    </span>
+                                </div>
+                            ))
+                        )}
                     </div>
                 )}
             </div>

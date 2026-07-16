@@ -37,6 +37,8 @@ class CameraInfo(BaseModel):
 
 class ControllerInfo(BaseModel):
     id: str
+    name: str
+    port: str
     status: str
 
 @router.get("/status")
@@ -56,7 +58,8 @@ def discover_cameras():
     if os.path.exists(v4l_dir):
         try:
             for vdev in sorted(os.listdir(v4l_dir)):
-                name_file = os.path.join(v4l_dir, vdev, "name")
+                dev_path = os.path.join(v4l_dir, vdev)
+                name_file = os.path.join(dev_path, "name")
                 if os.path.exists(name_file):
                     with open(name_file, "r") as f:
                         dev_name = f.read().strip()
@@ -66,8 +69,7 @@ def discover_cameras():
                     if any(word in lower_name for word in ["codec", "isp", "metadata", "fd", "video-mux", "broadcom"]):
                         continue
                     
-                    dev_path = f"/dev/{vdev}"
-                    cameras.append(CameraInfo(id=dev_path, name=f"{dev_name} ({vdev})", status="Ready"))
+                    cameras.append(CameraInfo(id=f"/dev/{vdev}", name=dev_name, status="Ready"))
         except Exception as e:
             print(f"Error scanning video4linux: {e}")
             
@@ -94,12 +96,32 @@ def discover_cameras():
     return cameras
 
 @router.get("/controllers", response_model=List[ControllerInfo])
-def discover_controllers(count: int = 1):
+def discover_controllers(count: Optional[int] = None):
     controllers = []
-    for i in range(1, count + 1):
-        controller_id = f"CTRL-{i:03d}"
-        status = "Online" if hardware_service.check_controller_status(controller_id) else "Offline"
-        controllers.append(ControllerInfo(id=controller_id, status=status))
+    
+    # If there are active serial connections in the hardware service
+    if hardware_service.connections:
+        for idx, (ctrl_id, conn) in enumerate(hardware_service.connections.items()):
+            port_name = conn.port if hasattr(conn, 'port') else "USB Device"
+            status = "Online" if hardware_service.check_controller_status(ctrl_id) else "Offline"
+            controllers.append(ControllerInfo(
+                id=ctrl_id,
+                name=f"Controller {idx + 1}",
+                port=port_name,
+                status=status
+            ))
+    else:
+        # Fallback simulation items for setup UI
+        limit = count if count is not None else 1
+        for i in range(1, limit + 1):
+            ctrl_id = f"CTRL-{i:03d}"
+            controllers.append(ControllerInfo(
+                id=ctrl_id,
+                name=f"Controller {i} (Simulation)",
+                port="Simulation Mode",
+                status="Online"
+            ))
+            
     return controllers
 
 @router.post("/initialize")
