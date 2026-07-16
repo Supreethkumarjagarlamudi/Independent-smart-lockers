@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY requirements.txt .
 # 1. Install heavy ARM-binary packages via Piwheels index to save compile time
-RUN pip install --no-cache-dir --timeout 100 --index-url https://www.piwheels.org/simple numpy==1.26.4 opencv-python-headless==4.8.1.78
+RUN pip install --no-cache-dir --timeout 100 --index-url https://pypi.org/simple --extra-index-url https://www.piwheels.org/simple numpy==1.26.4 opencv-python-headless==4.8.1.78
 # 2. Install pure Python packages from requirements.txt via standard PyPI (retains default hash integrity)
 RUN pip install --no-cache-dir -r requirements.txt
 
