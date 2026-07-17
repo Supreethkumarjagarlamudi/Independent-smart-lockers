@@ -157,24 +157,26 @@ export default function RecoveryPage() {
         setIsLoading(true);
         setErrorMessage("");
         try {
-            const [s, t, l, sc, lks, rev, allTx, cfg] = await Promise.all([
-                getAdminStats(),
-                getTransactions(),
-                getLogs(),
-                getSystemStatus(),
-                getLockers(),
-                getRevenueStats(),
-                getAllTransactions(250),
-                getSystemConfig()
-            ]);
-            setStats(s);
-            setTransactions(t);
-            setLogs(l);
-            setStatusCheck(sc);
-            setLockers(lks);
-            setRevenue(rev);
-            setDetailedTransactions(allTx);
-            setSystemConfig(cfg);
+            const promises: Promise<any>[] = [];
+
+            // Always check status so we know if controllers are online/offline
+            promises.push(getSystemStatus().then(setStatusCheck).catch(console.error));
+
+            if (activeTab === "DASHBOARD") {
+                promises.push(getAdminStats().then(setStats).catch(console.error));
+                promises.push(getRevenueStats().then(setRevenue).catch(console.error));
+            } else if (activeTab === "TRANSACTIONS") {
+                promises.push(getTransactions().then(setTransactions).catch(console.error));
+                promises.push(getAllTransactions(250).then(setDetailedTransactions).catch(console.error));
+            } else if (activeTab === "LOCKERS") {
+                promises.push(getLockers().then(setLockers).catch(console.error));
+            } else if (activeTab === "LOGS") {
+                promises.push(getLogs().then(setLogs).catch(console.error));
+            } else if (activeTab === "SETTINGS") {
+                promises.push(getSystemConfig().then(setSystemConfig).catch(console.error));
+            }
+
+            await Promise.all(promises);
         } catch (err: unknown) {
             setErrorMessage((err as Error).message || "Failed to sync admin data.");
         } finally {

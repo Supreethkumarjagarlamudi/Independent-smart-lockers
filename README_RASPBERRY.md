@@ -158,15 +158,26 @@ Using **Docker Containerization** allows you to deploy on multiple Raspberry Pis
    ```bash
    sudo reboot
    ```
+### 🧹 How to Reset / Clear the Database
 
-### What the installer handles:
-- Autodetects and installs **Docker** and **Docker Compose** on the host.
-- Compiles the React frontend using a multi-stage Node build and serves it via a lightweight, production-grade **Nginx** server container.
-- Sets up the FastAPI Python backend container, pre-installed with OpenCV systems, serial COM engines, and DB schemas.
-- Configures automatic desktop login for the user.
-- Creates an autostart desktop launcher linking to `start_kiosk.sh`.
+If you need to wipe all data (locker layouts, user records, and transaction logs) and force the Kiosk to run the **Setup Wizard** configuration screen again from scratch:
+
+1. **Stop the running containers:**
+   ```bash
+   docker compose down
+   ```
+2. **Clear the database file (retains the file mount pointer):**
+   ```bash
+   cat /dev/null > apps/local-api/smart_lockers.db
+   ```
+3. **Start the containers again:**
+   ```bash
+   docker compose up -d
+   ```
+   *On startup, the FastAPI backend will automatically rebuild the empty table schemas in the SQLite file.*
 
 ---
+
 
 ## 📂 3. Manual Installation (Non-Docker Fallback)
 

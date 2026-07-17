@@ -1,4 +1,12 @@
 import threading
+import logging
+
+# Configure root logger to output logs to console stdout
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
