@@ -426,3 +426,19 @@ def get_all_transactions(db: Session = Depends(get_db), limit: int = 250):
         })
     return results
 
+
+@router.post("/factory-reset")
+def factory_reset(db: Session = Depends(get_db)):
+    """Deletes system configs, locker mappings, transactions, and logs. Reverts to uninitialized state."""
+    try:
+        from app.models.models import SystemConfig, Locker, Transaction, SystemLog
+        db.query(SystemConfig).delete()
+        db.query(Locker).delete()
+        db.query(Transaction).delete()
+        db.query(SystemLog).delete()
+        db.commit()
+        return {"success": True, "message": "System has been hard-reset to factory state."}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Factory reset failed: {str(e)}")
+

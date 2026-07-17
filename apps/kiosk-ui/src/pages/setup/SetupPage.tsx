@@ -23,6 +23,7 @@ import type {
     ControllerInfo,
     SetupConfigPayload 
 } from "../../api/setup";
+import { APP_CONFIG } from "../../config/app";
 
 const TOTAL_STEPS = 8;
 
@@ -31,6 +32,40 @@ export default function SetupPage() {
     const [currentStep, setCurrentStep] = useState(0);
     const [isSaving, setIsSaving] = useState(false);
     const [saveProgress, setSaveProgress] = useState(0);
+
+    // Read query parameter and fetch existing config if update mode
+    const searchParams = new URLSearchParams(window.location.search);
+    const isUpdateMode = searchParams.get("update") === "true";
+
+    useEffect(() => {
+        if (isUpdateMode) {
+            fetch(`${APP_CONFIG.API_BASE_URL}/api/setup/status`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.config) {
+                        const cfg = data.config;
+                        setClusterName(cfg.cluster_name || "");
+                        setStationName(cfg.station_name || "");
+                        setLocation(cfg.location || "");
+                        setTimezone(cfg.timezone || "Asia/Kolkata");
+                        setLockerPrefix(cfg.locker_prefix || "A");
+                        setSelectedCamera(cfg.camera_model || "");
+                        setControllersCount(cfg.controllers_count || 1);
+                        setLockersCount(cfg.lockers_count || 10);
+                        setFreeMinutes(cfg.free_minutes || 0);
+                        setHourlyRate(cfg.hourly_rate || 10);
+                        setMaxHours(cfg.max_hours || 24);
+                        setGracePeriod(cfg.grace_period || 10);
+                        setRazorpayKeyId(cfg.razorpay_key_id || "");
+                        setRazorpayKeySecret(cfg.razorpay_key_secret || "");
+                        setAdminPassword(cfg.admin_password || "admin123");
+                        setFaceThreshold(cfg.face_threshold ? Math.round(cfg.face_threshold * 100) : 80);
+                        setLivenessEnabled(cfg.liveness_enabled !== false);
+                    }
+                })
+                .catch(err => console.error("Failed to fetch config for prefill", err));
+        }
+    }, [isUpdateMode]);
 
     // Custom Toast states
     const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -203,7 +238,7 @@ export default function SetupPage() {
                     liveness_enabled: livenessEnabled
                 };
                 
-                await initializeCluster(payload);
+                await initializeCluster(payload, isUpdateMode);
                 
                 // Show completion progress animation
                 let progress = 0;

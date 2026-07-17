@@ -125,33 +125,78 @@ def discover_controllers(count: Optional[int] = None):
     return controllers
 
 @router.post("/initialize")
-def initialize_cluster(schema: ConfigSetupSchema, db: Session = Depends(get_db)):
+def initialize_cluster(schema: ConfigSetupSchema, update: Optional[bool] = False, db: Session = Depends(get_db)):
     try:
-        # Delete any existing configuration first to re-initialize
-        db.query(SystemConfig).delete()
-        db.query(Locker).delete()
-        
-        # Save new configuration
-        config = SystemConfig(
-            cluster_name=schema.cluster_name,
-            station_name=schema.station_name,
-            location=schema.location,
-            timezone=schema.timezone,
-            free_minutes=schema.free_minutes,
-            hourly_rate=schema.hourly_rate,
-            max_hours=schema.max_hours,
-            grace_period=schema.grace_period,
-            camera_model=schema.camera_model,
-            controllers_count=schema.controllers_count,
-            lockers_count=schema.lockers_count,
-            razorpay_key_id=schema.razorpay_key_id,
-            razorpay_key_secret=schema.razorpay_key_secret,
-            admin_password=schema.admin_password if schema.admin_password else "admin123",
-            face_threshold=schema.face_threshold if schema.face_threshold is not None else 0.80,
-            liveness_enabled=schema.liveness_enabled if schema.liveness_enabled is not None else True,
-            initialized=True
-        )
-        db.add(config)
+        # Check if update mode
+        if update:
+            config = db.query(SystemConfig).first()
+            if config:
+                config.cluster_name = schema.cluster_name
+                config.station_name = schema.station_name
+                config.location = schema.location
+                config.timezone = schema.timezone
+                config.free_minutes = schema.free_minutes
+                config.hourly_rate = schema.hourly_rate
+                config.max_hours = schema.max_hours
+                config.grace_period = schema.grace_period
+                config.camera_model = schema.camera_model
+                config.controllers_count = schema.controllers_count
+                config.lockers_count = schema.lockers_count
+                config.razorpay_key_id = schema.razorpay_key_id
+                config.razorpay_key_secret = schema.razorpay_key_secret
+                if schema.admin_password:
+                    config.admin_password = schema.admin_password
+                if schema.face_threshold is not None:
+                    config.face_threshold = schema.face_threshold
+                if schema.liveness_enabled is not None:
+                    config.liveness_enabled = schema.liveness_enabled
+            else:
+                config = SystemConfig(
+                    cluster_name=schema.cluster_name,
+                    station_name=schema.station_name,
+                    location=schema.location,
+                    timezone=schema.timezone,
+                    free_minutes=schema.free_minutes,
+                    hourly_rate=schema.hourly_rate,
+                    max_hours=schema.max_hours,
+                    grace_period=schema.grace_period,
+                    camera_model=schema.camera_model,
+                    controllers_count=schema.controllers_count,
+                    lockers_count=schema.lockers_count,
+                    razorpay_key_id=schema.razorpay_key_id,
+                    razorpay_key_secret=schema.razorpay_key_secret,
+                    admin_password=schema.admin_password if schema.admin_password else "admin123",
+                    face_threshold=schema.face_threshold if schema.face_threshold is not None else 0.80,
+                    liveness_enabled=schema.liveness_enabled if schema.liveness_enabled is not None else True,
+                    initialized=True
+                )
+                db.add(config)
+        else:
+            # Delete any existing configuration first to re-initialize
+            db.query(SystemConfig).delete()
+            db.query(Locker).delete()
+            
+            # Save new configuration
+            config = SystemConfig(
+                cluster_name=schema.cluster_name,
+                station_name=schema.station_name,
+                location=schema.location,
+                timezone=schema.timezone,
+                free_minutes=schema.free_minutes,
+                hourly_rate=schema.hourly_rate,
+                max_hours=schema.max_hours,
+                grace_period=schema.grace_period,
+                camera_model=schema.camera_model,
+                controllers_count=schema.controllers_count,
+                lockers_count=schema.lockers_count,
+                razorpay_key_id=schema.razorpay_key_id,
+                razorpay_key_secret=schema.razorpay_key_secret,
+                admin_password=schema.admin_password if schema.admin_password else "admin123",
+                face_threshold=schema.face_threshold if schema.face_threshold is not None else 0.80,
+                liveness_enabled=schema.liveness_enabled if schema.liveness_enabled is not None else True,
+                initialized=True
+            )
+            db.add(config)
         
         # Generate lockers automatically based on controllers and count
         # For simplicity, divide total lockers count evenly among controllers
@@ -159,6 +204,10 @@ def initialize_cluster(schema: ConfigSetupSchema, db: Session = Depends(get_db))
         
         locker_index = 1
         prefix_val = schema.locker_prefix or "A"
+        
+        # In update mode, track existing lockers to avoid duplicate creation
+        existing_lockers = {l.id: l for l in db.query(Locker).all()} if update else {}
+        active_locker_ids = set()
         
         for c in range(1, schema.controllers_count + 1):
             controller_id = f"CTRL-{c:03d}"
@@ -169,20 +218,37 @@ def initialize_cluster(schema: ConfigSetupSchema, db: Session = Depends(get_db))
                 else:
                     prefix_char = chr(64 + c) # 65 is 'A'
                     locker_id = f"{prefix_char}-{l:02d}"
-                    
-                locker = Locker(
-                    id=locker_id,
-                    controller_id=controller_id,
-                    locker_number=l,
-                    status="AVAILABLE"
-                )
-                db.add(locker)
+                
+                active_locker_ids.add(locker_id)
+                
+                if locker_id in existing_lockers:
+                    # Update mapping coordinates for existing locker
+                    existing_lockers[locker_id].controller_id = controller_id
+                    existing_lockers[locker_id].locker_number = l
+                else:
+                    # Append new locker
+                    locker = Locker(
+                        id=locker_id,
+                        controller_id=controller_id,
+                        locker_number=l,
+                        status="AVAILABLE"
+                    )
+                    db.add(locker)
                 locker_index += 1
                 
+        # Clean up decommissioned lockers, preserving occupied ones
+        if update:
+            for old_id, old_locker in list(existing_lockers.items()):
+                if old_id not in active_locker_ids:
+                    if old_locker.status == "AVAILABLE":
+                        db.delete(old_locker)
+                    else:
+                        print(f"Warning: Occupied locker {old_id} is excluded from layout but preserved to protect active transaction.")
+                        
         # Audit log
         log = SystemLog(
             level="INFO",
-            message=f"System initialized. Cluster: {schema.cluster_name}, Lockers: {schema.lockers_count}"
+            message=f"System layout updated. Mode: {'Update' if update else 'Init'}, Cluster: {schema.cluster_name}, Lockers: {schema.lockers_count}"
         )
         db.add(log)
         

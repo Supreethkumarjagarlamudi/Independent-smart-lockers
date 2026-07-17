@@ -44,6 +44,7 @@ import {
     changeAdminPassword,
     getSystemConfig,
     updateSystemConfig,
+    factoryReset,
 } from "../../api/admin";
 import type {
     AdminStats,
@@ -150,6 +151,8 @@ export default function RecoveryPage() {
     const [selectedActionLoading, setSelectedActionLoading] = useState(false);
     const [showResetConfirm, setShowResetConfirm] = useState(false);
     const [resetLoading, setResetLoading] = useState(false);
+    const [showFactoryConfirm, setShowFactoryConfirm] = useState(false);
+    const [factoryLoading, setFactoryLoading] = useState(false);
 
 
     const refreshData = async () => {
@@ -255,6 +258,21 @@ export default function RecoveryPage() {
             setErrorMessage((err as Error).message || "Reset failed.");
         } finally {
             setResetLoading(false);
+        }
+    };
+
+    const handleFactoryReset = async () => {
+        setFactoryLoading(true);
+        setSuccessMessage(""); setErrorMessage("");
+        try {
+            await factoryReset();
+            setShowFactoryConfirm(false);
+            sessionStorage.removeItem("admin_authenticated");
+            navigate("/setup");
+        } catch (err: unknown) {
+            setErrorMessage((err as Error).message || "Factory reset failed.");
+        } finally {
+            setFactoryLoading(false);
         }
     };
 
@@ -896,6 +914,29 @@ export default function RecoveryPage() {
                         {configLoading ? "Saving..." : "Save Settings"}
                     </button>
                 </form>
+
+                <div style={{ marginTop: "24px", paddingTop: "20px", borderTop: "2px dashed #e2e8f0", display: "flex", flexDirection: "column", gap: "10px" }}>
+                    <span style={{ fontSize: "12px", fontWeight: "bold", color: "#0f172a" }}>System Initialization & Reconfiguration</span>
+                    <p style={{ fontSize: "11px", color: "#64748b", margin: 0 }}>
+                        Reconfigure your active locker setup layout. Choose whether to preserve active rentals or perform a complete factory wipe.
+                    </p>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginTop: "4px" }}>
+                        <button
+                            type="button"
+                            onClick={() => navigate("/setup?update=true")}
+                            style={{ height: "38px", background: "#f8fafc", color: "#0f172a", border: "1.5px solid #cbd5e1", borderRadius: "11px", fontWeight: 700, fontSize: "12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
+                        >
+                            <Settings size={14} /> Update Layout (Preserve Data)
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setShowFactoryConfirm(true)}
+                            style={{ height: "38px", background: "#fef2f2", color: "#dc2626", border: "1.5px solid #fecaca", borderRadius: "11px", fontWeight: 700, fontSize: "12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
+                        >
+                            <Trash2 size={14} /> Hard Reset (Factory Wipe)
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -1418,6 +1459,49 @@ export default function RecoveryPage() {
                                 style={{ flex: 1, height: "46px", borderRadius: "13px", border: "none", background: resetLoading ? "#fca5a5" : "#dc2626", color: "#fff", fontWeight: 700, fontSize: "14px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
                             >
                                 {resetLoading ? <><RefreshCw size={14} /> Resetting...</> : <><RotateCcw size={15} /> Yes, Reset All</>}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── FACTORY RESET CONFIRMATION MODAL ────────────────────────────── */}
+            {showFactoryConfirm && (
+                <div style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(15,23,42,0.75)", backdropFilter: "blur(8px)" }}>
+                    <div style={{ width: "100%", maxWidth: "400px", background: "#fff", borderRadius: "24px", border: "1px solid #fecaca", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.3)", padding: "32px", display: "flex", flexDirection: "column", gap: "20px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                            <div style={{ width: "48px", height: "48px", borderRadius: "14px", background: "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                <AlertTriangle size={24} color="#dc2626" />
+                            </div>
+                            <div>
+                                <h3 style={{ fontSize: "17px", fontWeight: 900, color: "#0f172a" }}>Hard Factory Reset?</h3>
+                                <p style={{ fontSize: "12px", color: "#dc2626", marginTop: "2px", fontWeight: "bold" }}>CRITICAL WARNING</p>
+                            </div>
+                        </div>
+
+                        <div style={{ padding: "14px 16px", background: "#fff5f5", borderRadius: "13px", border: "1px solid #fee2e2" }}>
+                            <p style={{ fontSize: "13px", color: "#991b1b", lineHeight: 1.6 }}>
+                                This will completely:<br />
+                                • Wipe all locker database configurations<br />
+                                • Delete all transaction history and logs<br />
+                                • Remove all customer face records<br />
+                                • Redirect you to setup a fresh cluster
+                            </p>
+                        </div>
+
+                        <div style={{ display: "flex", gap: "10px" }}>
+                            <button
+                                onClick={() => setShowFactoryConfirm(false)}
+                                style={{ flex: 1, height: "46px", borderRadius: "13px", border: "1px solid #e2e8f0", background: "#f8fafc", color: "#475569", fontWeight: 700, fontSize: "14px", cursor: "pointer" }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleFactoryReset}
+                                disabled={factoryLoading}
+                                style={{ flex: 1, height: "46px", borderRadius: "13px", border: "none", background: factoryLoading ? "#fca5a5" : "#dc2626", color: "#fff", fontWeight: 700, fontSize: "14px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
+                            >
+                                {factoryLoading ? <><RefreshCw size={14} /> Wiping...</> : <><Trash2 size={15} /> Yes, WIPE ALL</>}
                             </button>
                         </div>
                     </div>

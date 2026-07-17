@@ -141,6 +141,15 @@ export async function resetAllLockers(): Promise<{ success: boolean; released_lo
     return response.json();
 }
 
+export async function factoryReset(): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${APP_CONFIG.API_BASE_URL}/api/admin/factory-reset`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+    });
+    if (!response.ok) throw new Error("Factory reset failed.");
+    return response.json();
+}
+
 export interface DetailedTransaction extends AdminTransaction {
     payment_ref?: string | null;
     elapsed_seconds?: number | null;

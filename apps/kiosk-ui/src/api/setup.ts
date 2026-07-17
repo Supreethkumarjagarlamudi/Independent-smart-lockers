@@ -45,8 +45,8 @@ export async function getControllers(count: number): Promise<ControllerInfo[]> {
     return response.json();
 }
 
-export async function initializeCluster(payload: SetupConfigPayload): Promise<{ success: boolean; message: string }> {
-    const response = await fetch(`${APP_CONFIG.API_BASE_URL}/api/setup/initialize`, {
+export async function initializeCluster(payload: SetupConfigPayload, update: boolean = false): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${APP_CONFIG.API_BASE_URL}/api/setup/initialize?update=${update}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
