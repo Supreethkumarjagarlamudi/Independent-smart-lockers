@@ -52,6 +52,7 @@ def get_setup_status(db: Session = Depends(get_db)):
 def discover_cameras():
     cameras = []
     import os
+    from app.config.config import SIMULATION_MODE
     
     # 1. Scan /sys/class/video4linux (Linux/Pi standard path for connected video devices)
     v4l_dir = "/sys/class/video4linux"
@@ -64,9 +65,9 @@ def discover_cameras():
                     with open(name_file, "r") as f:
                         dev_name = f.read().strip()
                     
-                    # Filter out metadata nodes, codecs, and ISP virtual devices
+                    # Filter out metadata nodes, codecs, and ISP virtual devices (allowing unicam/broadcom camera captures)
                     lower_name = dev_name.lower()
-                    if any(word in lower_name for word in ["codec", "isp", "metadata", "fd", "video-mux", "broadcom"]):
+                    if any(word in lower_name for word in ["codec", "isp", "metadata", "fd", "video-mux"]):
                         continue
                     
                     cameras.append(CameraInfo(id=f"/dev/{vdev}", name=dev_name, status="Ready"))
@@ -84,14 +85,14 @@ def discover_cameras():
         except Exception as e:
             print(f"Error scanning /dev/video: {e}")
 
-    # 3. Add test fallback list ONLY if no real connected devices were detected (keeps dev environment working)
-    if not cameras:
-        cameras.append(CameraInfo(id="0", name="Random USB Camera", status="Ready"))
-        cameras.append(CameraInfo(id="1", name="Integrated FaceTime HD Camera", status="Ready"))
-        cameras.append(CameraInfo(id="2", name="Logitech Webcam C920", status="Ready"))
-    else:
-        # If real cameras are connected, only show the real ones + "Random USB Camera" for testing
-        cameras.append(CameraInfo(id="mock_random", name="Random USB Camera", status="Ready"))
+    # 3. Add test fallback list ONLY if in SIMULATION_MODE
+    if SIMULATION_MODE:
+        if not cameras:
+            cameras.append(CameraInfo(id="0", name="Random USB Camera (Simulation)", status="Ready"))
+            cameras.append(CameraInfo(id="1", name="Integrated FaceTime HD Camera", status="Ready"))
+            cameras.append(CameraInfo(id="2", name="Logitech Webcam C920", status="Ready"))
+        else:
+            cameras.append(CameraInfo(id="mock_random", name="Random USB Camera (Simulation)", status="Ready"))
         
     return cameras
 
