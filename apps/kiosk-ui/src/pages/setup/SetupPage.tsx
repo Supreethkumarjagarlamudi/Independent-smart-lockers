@@ -14,7 +14,6 @@ import { SetupProgress } from "../../components/setup/SetupProgress";
 import { SetupNavigation } from "../../components/setup/SetupNavigation";
 import { AppButton } from "../../components/ui/AppButton";
 import { 
-    getCameras, 
     getControllers, 
     initializeCluster
 } from "../../api/setup";
