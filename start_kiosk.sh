@@ -72,7 +72,7 @@ xset s noblank 2>/dev/null
 xset s off 2>/dev/null
 xset -dpms 2>/dev/null
 
-# Open Chromium pointing to the kiosk interface
+# Open Chromium pointing to the kiosk interface with Wayland/V4L2 compatibility overrides
 chromium-browser \
     --kiosk \
     --noerrdialogs \
@@ -83,7 +83,10 @@ chromium-browser \
     --disable-features=TranslateUI \
     --no-first-run \
     --fast \
-    --fast-start &
+    --fast-start \
+    --ozone-platform=x11 \
+    --use-fake-ui-for-media-stream \
+    --allow-file-access-from-files &
 CHROMIUM_PID=$!
 
 echo "=== All kiosk services initialized successfully! ==="
