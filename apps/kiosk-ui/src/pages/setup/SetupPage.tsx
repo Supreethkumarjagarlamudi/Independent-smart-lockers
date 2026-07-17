@@ -122,9 +122,36 @@ export default function SetupPage() {
         try {
             if (mediaStreamRef.current) stopCamera();
             
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { width: 640, height: 480 } 
-            });
+            // 1. Enumerate browser-accessible video inputs
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(d => d.kind === "videoinput");
+            
+            let constraints: MediaStreamConstraints = {
+                video: { width: 640, height: 480 }
+            };
+
+            // 2. Bind getUserMedia to the user-selected camera model if available
+            if (selectedCamera && videoDevices.length > 0) {
+                // Find matching browser device label
+                const match = videoDevices.find(d => 
+                    d.label && (
+                        d.label.toLowerCase().includes(selectedCamera.toLowerCase()) || 
+                        selectedCamera.toLowerCase().includes(d.label.toLowerCase())
+                    )
+                );
+                if (match) {
+                    constraints = {
+                        video: { 
+                            deviceId: { exact: match.deviceId },
+                            width: 640, 
+                            height: 480 
+                        }
+                    };
+                    console.log("SetupPage: Binding getUserMedia to deviceId:", match.deviceId, "label:", match.label);
+                }
+            }
+            
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
             mediaStreamRef.current = stream;
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
