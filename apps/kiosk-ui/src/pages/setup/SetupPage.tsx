@@ -122,34 +122,13 @@ export default function SetupPage() {
         try {
             if (mediaStreamRef.current) stopCamera();
             
-            // 1. Enumerate browser-accessible video inputs
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            const videoDevices = devices.filter(d => d.kind === "videoinput");
-            
-            let constraints: MediaStreamConstraints = {
-                video: { width: 640, height: 480 }
-            };
-
-            // 2. Bind getUserMedia to the user-selected camera model if available
-            if (selectedCamera && videoDevices.length > 0) {
-                // Find matching browser device label
-                const match = videoDevices.find(d => 
-                    d.label && (
-                        d.label.toLowerCase().includes(selectedCamera.toLowerCase()) || 
-                        selectedCamera.toLowerCase().includes(d.label.toLowerCase())
-                    )
-                );
-                if (match) {
-                    constraints = {
-                        video: { 
-                            deviceId: { exact: match.deviceId },
-                            width: 640, 
-                            height: 480 
-                        }
-                    };
-                    console.log("SetupPage: Binding getUserMedia to deviceId:", match.deviceId, "label:", match.label);
+            const constraints = {
+                video: { 
+                    deviceId: selectedCamera ? { exact: selectedCamera } : undefined,
+                    width: 640, 
+                    height: 480 
                 }
-            }
+            };
             
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
             mediaStreamRef.current = stream;
@@ -175,17 +154,37 @@ export default function SetupPage() {
         setIsTestingCamera(false);
     };
 
-    // Scan cameras
+    // Scan cameras directly using the browser's WebRTC engine
     const scanCameras = async () => {
         setCameraScanning(true);
         try {
-            const list = await getCameras();
-            setCameras(list);
-            if (list.length > 0) {
-                setSelectedCamera(list[0].name);
+            // First, trigger a quick permission prompt to unlock labels
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                stream.getTracks().forEach((track) => track.stop());
+            } catch (e) {
+                console.warn("Initial permission prompt skipped/failed", e);
+            }
+
+            // Enumerate devices directly in browser
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoInputs = devices.filter(d => d.kind === "videoinput");
+            
+            if (videoInputs.length > 0) {
+                const formatted = videoInputs.map((d, index) => ({
+                    id: d.deviceId,
+                    name: d.label || `Camera ${index + 1} (Grant permission to see name)`,
+                    status: "Ready"
+                }));
+                setCameras(formatted);
+                setSelectedCamera(formatted[0].id); // store deviceId in state
+            } else {
+                setCameras([]);
+                setSelectedCamera("");
             }
         } catch (err) {
-            console.error(err);
+            console.error("Failed to scan camera devices in browser:", err);
+            showToast("Failed to scan camera devices in browser.", "error");
         } finally {
             setCameraScanning(false);
         }
@@ -245,6 +244,9 @@ export default function SetupPage() {
             // Finish Setup - Save Configuration
             setIsSaving(true);
             try {
+                const cameraObj = cameras.find(c => c.id === selectedCamera);
+                const cameraModelName = cameraObj ? cameraObj.name : selectedCamera;
+
                 const payload: SetupConfigPayload = {
                     cluster_name: clusterName,
                     station_name: stationName,
@@ -254,7 +256,7 @@ export default function SetupPage() {
                     hourly_rate: Number(hourlyRate),
                     max_hours: Number(maxHours),
                     grace_period: Number(gracePeriod),
-                    camera_model: selectedCamera,
+                    camera_model: cameraModelName,
                     controllers_count: Number(controllersCount),
                     lockers_count: Number(lockersCount),
                     locker_prefix: lockerPrefix,
