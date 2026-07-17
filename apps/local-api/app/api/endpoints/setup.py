@@ -52,7 +52,7 @@ def get_setup_status(db: Session = Depends(get_db)):
 def discover_cameras():
     cameras = []
     import os
-    from app.config.config import SIMULATION_MODE
+    from app.services.hardware_service import SIMULATION_MODE
     
     # 1. Scan /sys/class/video4linux (Linux/Pi standard path for connected video devices)
     v4l_dir = "/sys/class/video4linux"
@@ -85,14 +85,14 @@ def discover_cameras():
         except Exception as e:
             print(f"Error scanning /dev/video: {e}")
 
-    # 3. Add test fallback list ONLY if in SIMULATION_MODE
+    # 3. Always ensure there is at least one default option (e.g. /dev/video0) so that Docker permission blocks do not halt setup
+    if not cameras:
+        cameras.append(CameraInfo(id="/dev/video0", name="Default Camera (/dev/video0)", status="Ready"))
+        cameras.append(CameraInfo(id="/dev/video1", name="Secondary Camera (/dev/video1)", status="Ready"))
+
+    # 4. Add test fallback list ONLY if in SIMULATION_MODE
     if SIMULATION_MODE:
-        if not cameras:
-            cameras.append(CameraInfo(id="0", name="Random USB Camera (Simulation)", status="Ready"))
-            cameras.append(CameraInfo(id="1", name="Integrated FaceTime HD Camera", status="Ready"))
-            cameras.append(CameraInfo(id="2", name="Logitech Webcam C920", status="Ready"))
-        else:
-            cameras.append(CameraInfo(id="mock_random", name="Random USB Camera (Simulation)", status="Ready"))
+        cameras.append(CameraInfo(id="mock_random", name="Random USB Camera (Simulation)", status="Ready"))
         
     return cameras
 
