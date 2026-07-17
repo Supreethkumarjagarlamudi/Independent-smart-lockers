@@ -43,10 +43,20 @@ class HardwareService:
 
         if self.port:
             try:
-                conn = serial.Serial(self.port, 115200, timeout=1.0)
+                # Prevent ESP32 auto-reset by initializing connection with disabled DTR/RTS lines
+                conn = serial.Serial()
+                conn.port = self.port
+                conn.baudrate = 115200
+                conn.timeout = 1.0
+                conn.dsrdtr = False
+                conn.rtscts = False
+                conn.dtr = False
+                conn.rts = False
+                conn.open()
+                
                 # Assume CTRL-001 for configured single port
                 self.connections["CTRL-001"] = conn
-                logger.info(f"HARDWARE: Connected to configured serial port {self.port} as CTRL-001")
+                logger.info(f"HARDWARE: Connected to configured serial port {self.port} as CTRL-001 (DTR/RTS disabled)")
                 return
             except Exception as e:
                 logger.error(f"HARDWARE ERROR: Failed to connect to configured port {self.port}: {e}")
@@ -59,27 +69,44 @@ class HardwareService:
             # Look for typical USB Serial chipsets (Silicon Labs, CH340, FTDI, Arduino)
             if any(x in p.device.lower() for x in ["usb", "acm", "ttyusb", "ch340", "cp210"]):
                 try:
-                    conn = serial.Serial(p.device, 115200, timeout=1.0)
-                    time.sleep(0.1) # Wait for serial device warm up
+                    conn = serial.Serial()
+                    conn.port = p.device
+                    conn.baudrate = 115200
+                    conn.timeout = 1.0
+                    conn.dsrdtr = False
+                    conn.rtscts = False
+                    conn.dtr = False
+                    conn.rts = False
+                    conn.open()
                     
-                    # Test connection by sending PING
-                    conn.write(b"PING\n")
-                    time.sleep(0.1)
-                    response = conn.readline().decode('utf-8', errors='ignore').strip()
+                    # Wait for serial device warm up (increased sleep for bootloader margin)
+                    time.sleep(1.5)
                     
-                    if "PONG" in response:
-                        # If response is "PONG CTRL-001", we extract the controller ID
-                        if " " in response:
-                            parts = response.split(" ")
-                            if len(parts) > 1:
-                                ctrl_id = parts[1].strip()
-                                self.connections[ctrl_id] = conn
-                                logger.info(f"HARDWARE: Connected to ESP32 {ctrl_id} on {p.device}")
-                                continue
-                        # Else store as generic discovered controller
-                        discovered_conns.append(conn)
-                    else:
-                        # If no response, store as generic anyway for sequential assignment fallback
+                    # Test connection by sending PING with retry
+                    connected = False
+                    for retry in range(3):
+                        conn.reset_input_buffer()
+                        conn.write(b"PING\n")
+                        conn.flush()
+                        time.sleep(0.1)
+                        response = conn.readline().decode('utf-8', errors='ignore').strip()
+                        
+                        if "PONG" in response:
+                            connected = True
+                            if " " in response:
+                                parts = response.split(" ")
+                                if len(parts) > 1:
+                                    ctrl_id = parts[1].strip()
+                                    self.connections[ctrl_id] = conn
+                                    logger.info(f"HARDWARE: Discovered ESP32 {ctrl_id} on {p.device}")
+                                    break
+                            
+                            # Generic discovered controller assignment
+                            discovered_conns.append(conn)
+                            break
+                    
+                    if not connected:
+                        # Store device anyway for sequential assignment fallback
                         discovered_conns.append(conn)
                 except Exception as e:
                     logger.warning(f"HARDWARE: Found USB device {p.device} but failed to open: {e}")
@@ -96,32 +123,34 @@ class HardwareService:
 
     def check_controller_status(self, controller_id: str) -> bool:
         """
-        Polls the physical locker controller unit to ensure it is online.
+        Polls the physical locker controller unit to ensure it is online with retry logic.
         """
         conn = self.connections.get(controller_id)
         if SERIAL_AVAILABLE and conn and conn.is_open:
-            try:
-                # Clear read buffer
-                conn.reset_input_buffer()
-                
-                # Send a status inquiry pin command
-                conn.write(b"PING\n")
-                conn.flush()
-                
-                response = conn.readline().decode('utf-8', errors='ignore').strip()
-                if "PONG" in response or "OK" in response:
-                    return True
-            except Exception as e:
-                logger.error(f"HARDWARE ERROR: Failed to ping ESP32 controller {controller_id}: {e}")
-                # Try to reconnect
-                self._connect_serial()
+            for retry in range(3):  # Try up to 3 times before declaring offline
+                try:
+                    conn.reset_input_buffer()
+                    conn.write(b"PING\n")
+                    conn.flush()
+                    
+                    time.sleep(0.1)
+                    response = conn.readline().decode('utf-8', errors='ignore').strip()
+                    if "PONG" in response or "OK" in response:
+                        return True
+                except Exception as e:
+                    logger.warning(f"HARDWARE WARNING: Ping attempt {retry + 1} failed for {controller_id}: {e}")
+                    time.sleep(0.1)
+            
+            # If all 3 retries failed, log error and trigger a safe reconnect attempt
+            logger.error(f"HARDWARE ERROR: Failed all ping retries for {controller_id}. Attempting to reconnect...")
+            self._connect_serial()
                 
         # If in explicit simulation mode, mock as online
         if SIMULATION_MODE:
             logger.info(f"Polling hardware controller {controller_id} status (Simulated Online)...")
             return True
             
-        logger.warning(f"HARDWARE: Controller {controller_id} is OFFLINE (no response / disconnected).")
+        logger.warning(f"HARDWARE: Controller {controller_id} is OFFLINE.")
         return False
 
     def unlock_locker_door(self, controller_id: str, locker_number: int) -> bool:
