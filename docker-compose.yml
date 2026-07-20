@@ -2,9 +2,7 @@ version: '3.8'
 
 services:
   backend:
-    build:
-      context: ./apps/local-api
-      dockerfile: Dockerfile
+    image: locker-backend:latest
     ports:
       - "8000:8000"
     volumes:
@@ -19,9 +17,7 @@ services:
     restart: always
 
   frontend:
-    build:
-      context: ./apps/kiosk-ui
-      dockerfile: Dockerfile
+    image: locker-frontend:latest
     ports:
       - "5173:80"
     restart: always

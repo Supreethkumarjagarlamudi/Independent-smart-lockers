@@ -22,3 +22,6 @@ logs/
 # IDE
 .vscode/
 .idea/
+
+# Docker Image Tar Archives
+*.tar
