@@ -920,18 +920,18 @@ export default function RecoveryPage() {
                     <p style={{ fontSize: "11px", color: "#64748b", margin: 0 }}>
                         Reconfigure your active locker setup layout. Choose whether to preserve active rentals or perform a complete factory wipe.
                     </p>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginTop: "4px" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "8px" }}>
                         <button
                             type="button"
                             onClick={() => navigate("/setup?update=true")}
-                            style={{ height: "38px", background: "#f8fafc", color: "#0f172a", border: "1.5px solid #cbd5e1", borderRadius: "11px", fontWeight: 700, fontSize: "12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
+                            style={{ height: "42px", padding: "0 16px", background: "#f8fafc", color: "#0f172a", border: "1.5px solid #cbd5e1", borderRadius: "11px", fontWeight: 700, fontSize: "12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", width: "100%" }}
                         >
                             <Settings size={14} /> Update Layout (Preserve Data)
                         </button>
                         <button
                             type="button"
                             onClick={() => setShowFactoryConfirm(true)}
-                            style={{ height: "38px", background: "#fef2f2", color: "#dc2626", border: "1.5px solid #fecaca", borderRadius: "11px", fontWeight: 700, fontSize: "12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
+                            style={{ height: "42px", padding: "0 16px", background: "#fef2f2", color: "#dc2626", border: "1.5px solid #fecaca", borderRadius: "11px", fontWeight: 700, fontSize: "12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", width: "100%" }}
                         >
                             <Trash2 size={14} /> Hard Reset (Factory Wipe)
                         </button>
