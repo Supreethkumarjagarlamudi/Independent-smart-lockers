@@ -72,8 +72,8 @@ xset s noblank 2>/dev/null
 xset s off 2>/dev/null
 xset -dpms 2>/dev/null
 
-# Open Chromium pointing to the kiosk interface with Wayland/V4L2 compatibility overrides
-chromium-browser \
+# Open Brave pointing to the kiosk interface with Wayland/V4L2 compatibility overrides
+brave-browser \
     --kiosk \
     --noerrdialogs \
     --disable-infobars \

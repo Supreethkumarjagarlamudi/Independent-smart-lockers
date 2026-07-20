@@ -19,7 +19,16 @@ USER_HOME=$(eval echo "~$SUDO_USER")
 
 echo "=== 1. Checking Host Package Dependencies ==="
 apt update
-apt install -y curl git chromium-browser x11-xserver-utils
+apt install -y curl git x11-xserver-utils
+
+# Add Brave Browser APT Repository & install brave-browser
+if ! command -v brave-browser &> /dev/null; then
+    echo "Adding Brave Browser repository and installing Brave..."
+    curl -fsSLo /usr/share/keyrings/brave-browser-archive-keyring.gpg https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
+    echo "deb [signed-by=/usr/share/keyrings/brave-browser-archive-keyring.gpg] https://brave-browser-apt-release.s3.brave.com/ stable main" | tee /etc/apt/sources.list.d/brave-browser-release.list
+    apt update
+    apt install -y brave-browser
+fi
 
 # 2. Install Docker & Docker Compose if missing
 if ! command -v docker &> /dev/null; then
