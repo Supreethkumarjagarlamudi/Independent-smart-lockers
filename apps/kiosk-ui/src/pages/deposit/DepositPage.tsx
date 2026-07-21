@@ -5,6 +5,7 @@ import {
     RefreshCw, 
     CheckCircle2
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 import { KioskShell } from "../../components/layout/KioskShell";
 import { SessionTimeout } from "../../components/common/SessionTimeout";
@@ -18,17 +19,22 @@ import type { PaymentCreateResponse } from "../../api/payment";
 import { registerFace } from "../../api/face";
 import { unlockLocker } from "../../api/lockers";
 
-type DepositStep = "DURATION" | "PAYMENT" | "FACE_REG" | "ASSIGNED" | "SUCCESS";
+type DepositStep = "DURATION" | "PAYMENT" | "FACE_REG" | "OPENING" | "ASSIGNED" | "SUCCESS";
 
 export default function DepositPage() {
     const navigate = useNavigate();
     const [step, setStep] = useState<DepositStep>("DURATION");
     const [isLoading, setIsLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
+    const [openProgress, setOpenProgress] = useState(0);
+    const isMountedRef = useRef(true);
 
     // Pricing details
     const [rentHours, setRentHours] = useState(1);
-    const [hourlyRate, setHourlyRate] = useState(10);
+    const [hourlyRate, setHourlyRate] = useState(() => {
+        const cached = localStorage.getItem("kiosk_hourly_rate");
+        return cached ? parseFloat(cached) : 10;
+    });
 
     // Payment details
     const [paymentData, setPaymentData] = useState<PaymentCreateResponse | null>(null);
@@ -67,12 +73,15 @@ export default function DepositPage() {
     }, [step]);
 
     useEffect(() => {
+        isMountedRef.current = true;
         return () => {
+            isMountedRef.current = false;
             const currentTxId = transactionIdRef.current;
             const currentStep = stepRef.current;
             if (currentTxId && (currentStep === "PAYMENT" || currentStep === "FACE_REG")) {
                 cancelPayment(currentTxId).catch((err) => console.error("Auto-cancel on unmount failed:", err));
             }
+            stopCamera();
         };
     }, []);
 
@@ -85,7 +94,9 @@ export default function DepositPage() {
                 if (response.ok) {
                     const data = await response.json();
                     if (data.initialized && data.config) {
-                        setHourlyRate(data.config.hourly_rate !== undefined && data.config.hourly_rate !== null ? data.config.hourly_rate : 10);
+                        const rate = data.config.hourly_rate !== undefined && data.config.hourly_rate !== null ? data.config.hourly_rate : 10;
+                        setHourlyRate(rate);
+                        localStorage.setItem("kiosk_hourly_rate", rate.toString());
                     }
                 }
             } catch (err) {
@@ -95,6 +106,25 @@ export default function DepositPage() {
         fetchConfig();
         return () => stopCamera();
     }, []);
+
+    // Locker door opening simulation progress animation
+    useEffect(() => {
+        if (step === "OPENING") {
+            setOpenProgress(0);
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 5;
+                setOpenProgress(progress);
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        setStep("ASSIGNED");
+                    }, 400);
+                }
+            }, 100);
+            return () => clearInterval(interval);
+        }
+    }, [step, assignedLockerId]);
 
     // Automatic Payment Status Polling
     useEffect(() => {
@@ -179,6 +209,13 @@ export default function DepositPage() {
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 video: { width: 480, height: 480, aspectRatio: 1 } 
             });
+            
+            // If component unmounted while getUserMedia was resolving, stop the tracks immediately
+            if (!isMountedRef.current) {
+                stream.getTracks().forEach((track) => track.stop());
+                return;
+            }
+
             setCameraStream(stream);
             cameraStreamRef.current = stream;
             if (videoRef.current) {
@@ -186,8 +223,10 @@ export default function DepositPage() {
                 videoRef.current.play().catch(err => console.error(err));
             }
         } catch (err) {
-            console.error("Camera error:", err);
-            setCameraError(true);
+            if (isMountedRef.current) {
+                console.error("Camera error:", err);
+                setCameraError(true);
+            }
         }
     };
 
@@ -238,7 +277,7 @@ export default function DepositPage() {
                 
                 // Unlock physical solenoid door
                 await unlockLocker(activePayment.locker_id);
-                setStep("ASSIGNED");
+                setStep("OPENING");
             }
         } catch (err: any) {
             setErrorMessage(err.message || "Face extraction failed. Retrying liveness check...");
@@ -428,7 +467,7 @@ export default function DepositPage() {
                 </div>
 
                 {errorMessage && (
-                    <p className="text-xs text-rose-500 font-semibold bg-rose-50 px-4 py-2 rounded-xl border border-rose-100 max-w-[340px]">
+                    <p className="text-xs text-rose-500 font-semibold bg-rose-50 px-4 py-2.5 rounded-xl border border-rose-100 max-w-[340px] text-center break-words mx-auto w-full">
                         {errorMessage}
                     </p>
                 )}
@@ -470,7 +509,7 @@ export default function DepositPage() {
         if (errorMessage && !paymentData) {
             return (
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 0", gap: "16px", textAlign: "center", userSelect: "none" }}>
-                    <p className="text-rose-500 font-bold text-base leading-relaxed">{errorMessage}</p>
+                    <p className="text-rose-500 font-bold text-base leading-relaxed px-4 break-words max-w-[340px] mx-auto">{errorMessage}</p>
                     <button 
                         onClick={() => setStep("DURATION")} 
                         className="mt-6 px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl shadow-md cursor-pointer"
@@ -552,7 +591,7 @@ export default function DepositPage() {
                 </div>
 
                 {errorMessage && (
-                    <p className="text-xs text-rose-500 font-semibold bg-rose-50 px-4 py-2 rounded-xl border border-rose-100 max-w-[340px] text-center">
+                    <p className="text-xs text-rose-500 font-semibold bg-rose-50 px-4 py-2.5 rounded-xl border border-rose-100 max-w-[340px] text-center break-words mx-auto w-full">
                         {errorMessage}
                     </p>
                 )}
@@ -658,13 +697,86 @@ export default function DepositPage() {
                 </div>
 
                 {errorMessage && (
-                    <p className="text-xs text-rose-500 font-semibold bg-rose-50 px-4 py-2 rounded-xl border border-rose-100 max-w-[340px] text-center">
+                    <p className="text-xs text-rose-500 font-semibold bg-rose-50 px-4 py-2.5 rounded-xl border border-rose-100 max-w-[340px] text-center break-words mx-auto w-full">
                         {errorMessage}
                     </p>
                 )}
             </div>
         );
     };
+
+    // Beautiful SVG Cabinet Drawer Illustration
+    const renderCabinetSVG = (isOpen: boolean, hasBag: boolean = false) => {
+        return (
+            <svg viewBox="0 0 160 160" className="w-36 h-36 select-none" fill="none" xmlns="http://www.w3.org/2000/svg">
+                {/* Outer frame */}
+                <rect x="25" y="15" width="110" height="130" rx="12" fill="#E2E8F0" stroke="#94A3B8" strokeWidth="4" />
+                
+                {/* Inside compartment dark shadow */}
+                <rect x="31" y="21" width="98" height="118" rx="8" fill="#F1F5F9" />
+                
+                {isOpen ? (
+                    <>
+                        {/* Shelf divider */}
+                        <line x1="31" y1="80" x2="129" y2="80" stroke="#CBD5E1" strokeWidth="2.5" />
+                        
+                        {/* Door left */}
+                        <path d="M25 15 L-12 25 L-12 135 L25 145 Z" fill="#94A3B8" stroke="#64748B" strokeWidth="2" opacity="0.95" />
+                        
+                        {/* Door right */}
+                        <path d="M135 15 L172 25 L172 135 L135 145 Z" fill="#94A3B8" stroke="#64748B" strokeWidth="2" opacity="0.95" />
+                        
+                        {hasBag && (
+                            // Blue Backpack Vector illustration inside locker
+                            <g transform="translate(50, 42) scale(1)">
+                                <rect x="8" y="16" width="44" height="42" rx="10" fill="#3b82f6" stroke="#2563eb" strokeWidth="2" />
+                                <rect x="15" y="8" width="30" height="12" rx="4" fill="#60a5fa" stroke="#3b82f6" strokeWidth="1.5" />
+                                <rect x="12" y="32" width="36" height="24" rx="6" fill="#1d4ed8" stroke="#1e40af" strokeWidth="1.5" />
+                                <path d="M24 8 C24 4, 36 4, 36 8" stroke="#1e3a8a" strokeWidth="2" fill="none" />
+                            </g>
+                        )}
+                    </>
+                ) : (
+                    <>
+                        {/* Closed door */}
+                        <rect x="25" y="15" width="110" height="130" rx="12" fill="#64748B" stroke="#475569" strokeWidth="4" />
+                        {/* Door handle & vent slots */}
+                        <line x1="40" y1="28" x2="64" y2="28" stroke="#475569" strokeWidth="3" />
+                        <line x1="40" y1="38" x2="64" y2="38" stroke="#475569" strokeWidth="3" />
+                        <rect x="108" y="65" width="12" height="30" rx="3" fill="#94A3B8" />
+                    </>
+                )}
+            </svg>
+        );
+    };
+
+    const renderOpening = () => (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "24px", width: "100%", userSelect: "none", textAlign: "center" }}>
+            <div>
+                <h2 className="text-3xl font-black text-slate-900 leading-none">Opening Locker</h2>
+                <p className="text-slate-500 text-sm font-semibold" style={{ marginTop: "8px" }}>Please wait while the locker door unlocks</p>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "16px", width: "100%", maxWidth: "340px" }}>
+                {renderCabinetSVG(true, false)}
+                
+                <h3 style={{ fontSize: "14px", fontWeight: "bold", color: "#475569" }}>Opening locker {assignedLockerId}...</h3>
+                
+                {/* Progress bar */}
+                <div style={{ width: "100%", height: "10px", borderRadius: "9999px", backgroundColor: "#f1f5f9", border: "1px solid #e2e8f0", overflow: "hidden", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.06)" }}>
+                    <div 
+                        style={{ 
+                            height: "100%", 
+                            backgroundColor: "#2563eb", 
+                            borderRadius: "9999px", 
+                            width: `${openProgress}%`, 
+                            transition: "width 200ms ease" 
+                        }}
+                    />
+                </div>
+            </div>
+        </div>
+    );
 
     const renderLockerAssigned = () => (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "24px", width: "100%", userSelect: "none" }}>
@@ -673,13 +785,15 @@ export default function DepositPage() {
                 <p className="text-slate-500 text-sm font-semibold" style={{ marginTop: "8px" }}>Your locker has been assigned</p>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "16px" }}>
-                <div className="relative flex h-36 w-36 items-center justify-center rounded-full bg-blue-50 border border-blue-100 text-blue-600 shadow-md">
-                    <span className="text-4xl font-black leading-none">{assignedLockerId}</span>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "16px", width: "100%" }}>
+                {renderCabinetSVG(true, false)}
+                
+                <div className="relative flex h-14 w-36 items-center justify-center rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 shadow-md">
+                    <span className="text-3xl font-black leading-none">{assignedLockerId}</span>
                 </div>
                 
                 <p className="max-w-sm text-sm text-slate-500 font-semibold leading-relaxed px-4 text-center">
-                    Please proceed to the locker and place your items.
+                    Please proceed to locker <strong>{assignedLockerId}</strong> and place your items.
                 </p>
             </div>
 
@@ -696,9 +810,14 @@ export default function DepositPage() {
 
     const renderSuccess = () => (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "20px", width: "100%", userSelect: "none" }}>
-            <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-green-50 text-green-500 border border-green-100 shadow-sm">
-                <CheckCircle2 size={40} className="animate-bounce" />
-            </div>
+            <motion.div 
+                initial={{ scale: 0, rotate: -45 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.15 }}
+                className="relative flex h-20 w-20 items-center justify-center rounded-full bg-green-50 text-green-500 border border-green-100 shadow-sm"
+            >
+                <CheckCircle2 size={40} className="text-green-500" />
+            </motion.div>
 
             <div style={{ textAlign: "center" }}>
                 <h2 className="text-3xl font-black text-slate-900 leading-none">Deposit Successful!</h2>
@@ -722,15 +841,22 @@ export default function DepositPage() {
                         justifyContent: "space-between", 
                         alignItems: "center", 
                         padding: "14px 16px", 
-                        borderBottom: "1px solid #e2e8f0" 
+                        borderBottom: "1px dashed #e2e8f0" 
                     }}
                 >
-                    <span style={{ fontWeight: "bold", color: "#64748b", fontSize: "12px" }}>Locker Number</span>
-                    <span style={{ padding: "4px 12px", backgroundColor: "#dcfce7", color: "#15803d", borderRadius: "9999px", fontWeight: "800", fontSize: "12px" }}>{assignedLockerId}</span>
+                    <span style={{ fontSize: "13px", fontWeight: "bold", color: "#64748b" }}>Assigned Locker</span>
+                    <span style={{ fontSize: "14px", fontWeight: "black", color: "#1e293b" }}>{assignedLockerId}</span>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px" }}>
-                    <span style={{ fontWeight: "bold", color: "#64748b", fontSize: "12px" }}>Transaction ID</span>
-                    <span style={{ fontFamily: "monospace", color: "#334155", fontWeight: "800", fontSize: "12px" }}>{transactionId}</span>
+                <div 
+                    style={{ 
+                        display: "flex", 
+                        justifyContent: "space-between", 
+                        alignItems: "center", 
+                        padding: "14px 16px" 
+                    }}
+                >
+                    <span style={{ fontSize: "13px", fontWeight: "bold", color: "#64748b" }}>Store Rate</span>
+                    <span style={{ fontSize: "14px", fontWeight: "black", color: "#16a34a" }}>₹{hourlyRate}/hr</span>
                 </div>
             </div>
 
@@ -766,11 +892,23 @@ export default function DepositPage() {
     return (
         <KioskShell>
             <SessionTimeout timeoutMs={45000} onTimeout={handleSessionTimeout} />
-            {step === "DURATION" && renderDuration()}
-            {step === "PAYMENT" && renderPayment()}
-            {step === "FACE_REG" && renderFaceRegistration()}
-            {step === "ASSIGNED" && renderLockerAssigned()}
-            {step === "SUCCESS" && renderSuccess()}
+            <AnimatePresence mode="wait">
+                <motion.div
+                    key={step}
+                    initial={{ opacity: 0, x: 12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -12 }}
+                    transition={{ duration: 0.25, ease: "easeInOut" }}
+                    style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}
+                >
+                    {step === "DURATION" && renderDuration()}
+                    {step === "PAYMENT" && renderPayment()}
+                    {step === "FACE_REG" && renderFaceRegistration()}
+                    {step === "OPENING" && renderOpening()}
+                    {step === "ASSIGNED" && renderLockerAssigned()}
+                    {step === "SUCCESS" && renderSuccess()}
+                </motion.div>
+            </AnimatePresence>
         </KioskShell>
     );
 }

@@ -5,6 +5,7 @@ import {
     RefreshCw, 
     CheckCircle2
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 import { KioskShell } from "../../components/layout/KioskShell";
 import { SessionTimeout } from "../../components/common/SessionTimeout";
@@ -57,17 +58,7 @@ export default function RetrievePage() {
         stepRef.current = step;
     }, [step]);
 
-    useEffect(() => {
-        return () => {
-            const currentTxId = transactionIdRef.current;
-            const currentStep = stepRef.current;
-            if (currentTxId && currentStep === "PAYMENT") {
-                cancelPayment(currentTxId).catch((err) => console.error("Auto-cancel retrieve payment on unmount failed:", err));
-            }
-        };
-    }, []);
-
-
+    const isMountedRef = useRef(true);
     const cameraStreamRef = useRef<MediaStream | null>(null);
 
     const startCamera = async () => {
@@ -76,6 +67,13 @@ export default function RetrievePage() {
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 video: { width: 480, height: 480, aspectRatio: 1 } 
             });
+            
+            // If component unmounted while getUserMedia was resolving, stop the tracks immediately
+            if (!isMountedRef.current) {
+                stream.getTracks().forEach((track) => track.stop());
+                return;
+            }
+
             setCameraStream(stream);
             cameraStreamRef.current = stream;
             if (videoRef.current) {
@@ -83,8 +81,10 @@ export default function RetrievePage() {
                 videoRef.current.play().catch(err => console.error(err));
             }
         } catch (err) {
-            console.error("Camera access error:", err);
-            setCameraError(true);
+            if (isMountedRef.current) {
+                console.error("Camera access error:", err);
+                setCameraError(true);
+            }
         }
     };
 
@@ -102,13 +102,26 @@ export default function RetrievePage() {
         }
     };
 
+    // Clean up payment and camera when unmounting
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+            const currentTxId = transactionIdRef.current;
+            const currentStep = stepRef.current;
+            if (currentTxId && currentStep === "PAYMENT") {
+                cancelPayment(currentTxId).catch((err) => console.error("Auto-cancel retrieve payment on unmount failed:", err));
+            }
+            stopCamera();
+        };
+    }, []);
+
     useEffect(() => {
         if (step === "FACE_RECOG") {
             startCamera();
         } else {
             stopCamera();
         }
-        return () => stopCamera();
     }, [step]);
 
     // Polling check for retrieval overdue payments
@@ -492,7 +505,7 @@ export default function RetrievePage() {
                 </div>
 
                 {errorMessage && (
-                    <p className="text-xs text-rose-500 font-semibold bg-rose-50 px-4 py-2 rounded-xl border border-rose-100 max-w-[340px] text-center">
+                    <p className="text-xs text-rose-500 font-semibold bg-rose-50 px-4 py-2.5 rounded-xl border border-rose-100 max-w-[340px] text-center break-words mx-auto w-full">
                         {errorMessage}
                     </p>
                 )}
@@ -561,7 +574,7 @@ export default function RetrievePage() {
             </div>
 
             {errorMessage && (
-                <p className="text-xs text-rose-500 font-semibold bg-rose-50 px-4 py-2 rounded-xl border border-rose-100 w-full text-center">
+                <p className="text-xs text-rose-500 font-semibold bg-rose-50 px-4 py-2.5 rounded-xl border border-rose-100 max-w-[340px] text-center break-words mx-auto w-full">
                     {errorMessage}
                 </p>
             )}
@@ -657,7 +670,7 @@ export default function RetrievePage() {
                 </div>
 
                 {errorMessage && (
-                    <p className="text-xs text-rose-500 font-semibold bg-rose-50 px-4 py-2 rounded-xl border border-rose-100 max-w-[340px] text-center">
+                    <p className="text-xs text-rose-500 font-semibold bg-rose-50 px-4 py-2.5 rounded-xl border border-rose-100 max-w-[340px] text-center break-words mx-auto w-full">
                         {errorMessage}
                     </p>
                 )}
@@ -747,7 +760,7 @@ export default function RetrievePage() {
             </div>
 
             {errorMessage && (
-                <p className="text-xs text-rose-500 font-semibold bg-rose-50 px-4 py-2 rounded-xl border border-rose-100 text-center w-full max-w-[340px]">
+                <p className="text-xs text-rose-500 font-semibold bg-rose-50 px-4 py-2.5 rounded-xl border border-rose-100 max-w-[340px] text-center break-words mx-auto w-full">
                     {errorMessage}
                 </p>
             )}
@@ -772,9 +785,14 @@ export default function RetrievePage() {
 
     const renderSuccess = () => (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "20px", width: "100%", userSelect: "none", textAlign: "center" }}>
-            <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-green-50 text-green-500 border border-green-100 shadow-sm">
-                <CheckCircle2 size={40} className="animate-bounce" />
-            </div>
+            <motion.div 
+                initial={{ scale: 0, rotate: -45 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.15 }}
+                className="relative flex h-20 w-20 items-center justify-center rounded-full bg-green-50 text-green-500 border border-green-100 shadow-sm"
+            >
+                <CheckCircle2 size={40} className="text-green-500" />
+            </motion.div>
 
             <div>
                 <h2 className="text-3xl font-black text-slate-900 leading-none">Retrieve Successful!</h2>
@@ -824,12 +842,23 @@ export default function RetrievePage() {
     return (
         <KioskShell>
             <SessionTimeout timeoutMs={45000} onTimeout={handleSessionTimeout} />
-            {step === "FACE_RECOG" && renderFaceRecognition()}
-            {step === "SELECT_LOCKER" && renderSelectLocker()}
-            {step === "PAYMENT" && renderPayment()}
-            {step === "OPENING" && renderOpening()}
-            {step === "RETRIEVE" && renderRetrieve()}
-            {step === "SUCCESS" && renderSuccess()}
+            <AnimatePresence mode="wait">
+                <motion.div
+                    key={step}
+                    initial={{ opacity: 0, x: 12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -12 }}
+                    transition={{ duration: 0.25, ease: "easeInOut" }}
+                    style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}
+                >
+                    {step === "FACE_RECOG" && renderFaceRecognition()}
+                    {step === "SELECT_LOCKER" && renderSelectLocker()}
+                    {step === "PAYMENT" && renderPayment()}
+                    {step === "OPENING" && renderOpening()}
+                    {step === "RETRIEVE" && renderRetrieve()}
+                    {step === "SUCCESS" && renderSuccess()}
+                </motion.div>
+            </AnimatePresence>
         </KioskShell>
     );
 }

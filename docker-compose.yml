@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   backend:
-    image: locker-backend:latest
+    image: supreeth902/locker-backend:latest
     ports:
       - "8000:8000"
     volumes:
@@ -17,7 +17,7 @@ services:
     restart: always
 
   frontend:
-    image: locker-frontend:latest
+    image: supreeth902/locker-frontend:latest
     ports:
       - "5173:80"
     restart: always

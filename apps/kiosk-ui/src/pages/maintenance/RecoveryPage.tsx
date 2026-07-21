@@ -35,7 +35,6 @@ import {
     getLogs,
     getSystemStatus,
     overrideLocker,
-    getFaceDebugInfo,
     runFaceDebugLive,
     resetAllLockers,
     getAllTransactions,
@@ -51,7 +50,6 @@ import type {
     AdminTransaction,
     SystemLogItem,
     SystemStatusResponse,
-    FaceDebugInfo,
     FaceDebugLiveResult,
     DetailedTransaction,
     RevenueStats,
@@ -62,15 +60,7 @@ import type { LockerInfo } from "../../api/lockers";
 
 type ActiveTab = "DASHBOARD" | "TRANSACTIONS" | "LOCKERS" | "LOGS" | "DEVTOOLS" | "SETTINGS";
 
-// ─── Utility row for dev tools ─────────────────────────────────────────────
-function Row({ label, value, mono, color }: { label: string; value: string; mono?: boolean; color?: string }) {
-    return (
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
-            <span style={{ fontSize: "11px", color: "#64748b", fontWeight: 600, whiteSpace: "nowrap" }}>{label}</span>
-            <span style={{ fontSize: "11px", fontWeight: 700, color: color ?? "#cbd5e1", textAlign: "right", fontFamily: mono ? "monospace" : undefined, wordBreak: "break-all" }}>{value}</span>
-        </div>
-    );
-}
+
 
 export default function RecoveryPage() {
     const navigate = useNavigate();
@@ -140,7 +130,7 @@ export default function RecoveryPage() {
     const [statusCheck, setStatusCheck] = useState<SystemStatusResponse | null>(null);
     const [lockers, setLockers] = useState<LockerInfo[]>([]);
 
-    const [faceDebugInfo, setFaceDebugInfo] = useState<FaceDebugInfo | null>(null);
+
     const [liveDebugResult, setLiveDebugResult] = useState<FaceDebugLiveResult | null>(null);
     const [liveDebugLoading, setLiveDebugLoading] = useState(false);
     const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
@@ -193,11 +183,7 @@ export default function RecoveryPage() {
         }
     }, [activeTab, isAuthenticated]);
 
-    useEffect(() => {
-        if (isAuthenticated && activeTab === "DEVTOOLS") {
-            getFaceDebugInfo().then(setFaceDebugInfo).catch(() => setFaceDebugInfo(null));
-        }
-    }, [activeTab, isAuthenticated]);
+
 
     // Attach camera stream to video element AFTER React renders the <video> tag
     useEffect(() => {
@@ -1002,67 +988,6 @@ export default function RecoveryPage() {
     // ─── Dev Tools ────────────────────────────────────────────────────────────
     const renderDevTools = () => (
         <div style={{ display: "flex", flexDirection: "column", gap: "22px" }}>
-            {/* Algorithm Info */}
-            <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: "22px", padding: "26px", color: "#e2e8f0" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
-                    <div style={{ width: "40px", height: "40px", borderRadius: "12px", background: "#1e3a8a", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <Cpu size={20} color="#60a5fa" />
-                    </div>
-                    <div>
-                        <h3 style={{ fontSize: "15px", fontWeight: 800, color: "#f1f5f9" }}>Face Recognition Algorithm</h3>
-                        <p style={{ fontSize: "12px", color: "#64748b" }}>OpenCV YuNet · SFace ONNX Pipeline</p>
-                    </div>
-                </div>
-
-                {faceDebugInfo ? (
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-                        <div style={{ background: "#1e293b", borderRadius: "14px", padding: "16px" }}>
-                            <p style={{ fontSize: "10px", fontWeight: 700, color: "#60a5fa", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "12px" }}>Detection Stage</p>
-                            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                                <Row label="Model" value={faceDebugInfo.algorithm.detection_model} />
-                                <Row label="File"  value={faceDebugInfo.algorithm.detection_model_file} mono />
-                                <Row label="On Disk" value={faceDebugInfo.model_status.yunet_on_disk ? `✓ ${faceDebugInfo.model_status.yunet_size_kb} KB` : "✗ Missing"} color={faceDebugInfo.model_status.yunet_on_disk ? "#4ade80" : "#f87171"} />
-                                <Row label="Loaded"  value={faceDebugInfo.model_status.yunet_loaded  ? "✓ Active" : "✗ Not loaded"} color={faceDebugInfo.model_status.yunet_loaded ? "#4ade80" : "#f87171"} />
-                            </div>
-                        </div>
-
-                        <div style={{ background: "#1e293b", borderRadius: "14px", padding: "16px" }}>
-                            <p style={{ fontSize: "10px", fontWeight: 700, color: "#a78bfa", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "12px" }}>Recognition Stage</p>
-                            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                                <Row label="Model" value={faceDebugInfo.algorithm.recognition_model} />
-                                <Row label="File"  value={faceDebugInfo.algorithm.recognition_model_file} mono />
-                                <Row label="On Disk" value={faceDebugInfo.model_status.sface_on_disk ? `✓ ${faceDebugInfo.model_status.sface_size_kb} KB` : "✗ Missing"} color={faceDebugInfo.model_status.sface_on_disk ? "#4ade80" : "#f87171"} />
-                                <Row label="Embedding" value={`${faceDebugInfo.algorithm.embedding_dimensions}-dim vector`} />
-                            </div>
-                        </div>
-
-                        <div style={{ background: "#1e293b", borderRadius: "14px", padding: "16px" }}>
-                            <p style={{ fontSize: "10px", fontWeight: 700, color: "#34d399", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "12px" }}>Matching Config</p>
-                            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                                <Row label="Metric"        value={faceDebugInfo.algorithm.similarity_metric} />
-                                <Row label="Threshold"     value={`≥ ${faceDebugInfo.algorithm.match_threshold}`} color="#fbbf24" />
-                                <Row label="Enrolled"      value={`${faceDebugInfo.database.active_enrolled_faces} active faces`} />
-                                <Row label="Grace Period"  value={`${faceDebugInfo.database.grace_period_minutes} min`} />
-                            </div>
-                        </div>
-
-                        <div style={{ background: "#1e293b", borderRadius: "14px", padding: "16px" }}>
-                            <p style={{ fontSize: "10px", fontWeight: 700, color: "#fb923c", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "10px" }}>Pipeline Flow</p>
-                            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                                {["1. Camera sends JPEG frame", "2. YuNet detects face + 5 keypoints", "3. SFace aligns crop → 128-dim vector", "4. Cosine similarity vs stored embeddings", "5. Match if similarity ≥ threshold"].map((step) => (
-                                    <p key={step} style={{ fontSize: "11px", color: "#94a3b8", lineHeight: 1.5 }}>{step}</p>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                ) : (
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "20px" }}>
-                        <RefreshCw size={18} color="#64748b" />
-                        <span style={{ color: "#64748b", fontSize: "14px" }}>Loading algorithm info...</span>
-                    </div>
-                )}
-            </div>
-
             {/* Live Debug */}
             <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "22px", padding: "26px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { CheckCircle2 } from "lucide-react";
+import { motion } from "framer-motion";
 import { getClusterStatus } from "../../api/cluster";
 import { AppLayout } from "./AppLayout";
 
@@ -11,18 +12,30 @@ type KioskShellProps = {
 
 export function KioskShell({ children }: KioskShellProps) {
     const navigate = useNavigate();
-    const [clusterName, setClusterName] = useState("Engineering Block A");
-    const [stationName, setStationName] = useState("Locker Station 01");
+    
+    // Load initial values from localStorage cache to prevent flash of default name placeholders
+    const cachedStatusStr = localStorage.getItem("kiosk_setup_status");
+    const cachedStatus = cachedStatusStr ? JSON.parse(cachedStatusStr) : null;
+    
+    const [clusterName, setClusterName] = useState(cachedStatus?.cluster_name || "Engineering Block A");
+    const [stationName, setStationName] = useState(cachedStatus?.station_name || "Locker Station 01");
     const [time, setTime] = useState("");
 
-    // Fetch cluster metadata
+    // Fetch cluster metadata and keep the cache updated
     useEffect(() => {
         const fetchStatus = async () => {
             try {
                 const status = await getClusterStatus();
                 if (status.initialized) {
-                    if ((status as any).cluster_name) setClusterName((status as any).cluster_name);
-                    if ((status as any).station_name) setStationName((status as any).station_name);
+                    const cName = (status as any).cluster_name || "";
+                    const sName = (status as any).station_name || "";
+                    if (cName) setClusterName(cName);
+                    if (sName) setStationName(sName);
+                    
+                    localStorage.setItem(
+                        "kiosk_setup_status",
+                        JSON.stringify({ cluster_name: cName, station_name: sName })
+                    );
                 }
             } catch (err) {
                 console.error("Failed to fetch cluster status in KioskShell", err);
@@ -47,9 +60,9 @@ export function KioskShell({ children }: KioskShellProps) {
 
     const generateKioskId = () => {
         if (!clusterName) return "SL-ENG-A-01";
-        const cWords = clusterName.split(/\s+/).map(w => w[0]).join("").toUpperCase();
+        const cWords = clusterName.split(/\s+/).map((w: string) => w[0]).join("").toUpperCase();
         const sNum = stationName.replace(/[^0-9]/g, "");
-        const sChar = stationName.split(/\s+/).map(w => w[0]).join("").toUpperCase();
+        const sChar = stationName.split(/\s+/).map((w: string) => w[0]).join("").toUpperCase();
         
         const part1 = cWords.length >= 2 ? cWords : clusterName.substring(0, 3).toUpperCase();
         const part2 = sNum ? sNum : sChar || "01";
@@ -58,8 +71,11 @@ export function KioskShell({ children }: KioskShellProps) {
 
     return (
         <AppLayout>
-            <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 md:p-8">
-                <div 
+            <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 md:p-8">
+                <motion.div 
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
                     className="w-full max-w-[480px] rounded-[36px] border border-slate-200/80 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.12)] flex flex-col overflow-hidden"
                     style={{ minHeight: "580px" }}
                 >
@@ -131,6 +147,11 @@ export function KioskShell({ children }: KioskShellProps) {
                             ID: <span style={{ color: "#2563eb", fontWeight: "bold" }}>{generateKioskId()}</span>
                         </span>
                     </footer>
+                </motion.div>
+
+                {/* Corporate branding */}
+                <div style={{ marginTop: "16px", fontSize: "11px", fontWeight: 700, color: "#94a3b8", userSelect: "none", textAlign: "center", letterSpacing: "0.02em" }}>
+                    Designed & Developed by <span style={{ color: "#2563eb", fontWeight: 800 }}>Viana Soft Pvt Ltd</span>
                 </div>
             </div>
         </AppLayout>

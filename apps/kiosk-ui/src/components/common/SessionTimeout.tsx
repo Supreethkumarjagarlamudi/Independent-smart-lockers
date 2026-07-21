@@ -162,18 +162,45 @@ export function SessionTimeout({
                             marginBottom: "18px"
                         }}>
                             <div style={{
+                                position: "relative",
+                                height: "76px",
+                                width: "76px",
                                 display: "flex",
-                                height: "72px",
-                                width: "72px",
                                 alignItems: "center",
-                                justifyContent: "center",
-                                borderRadius: "9999px",
-                                border: "3px solid #d97706",
-                                fontSize: "26px",
-                                fontWeight: 900,
-                                color: "#d97706"
+                                justifyContent: "center"
                             }}>
-                                {timeLeft}
+                                <svg className="-rotate-90 w-full h-full" viewBox="0 0 76 76">
+                                    <circle
+                                        cx="38"
+                                        cy="38"
+                                        r="34"
+                                        stroke="#f1f5f9"
+                                        strokeWidth="4"
+                                        fill="transparent"
+                                    />
+                                    <motion.circle
+                                        cx="38"
+                                        cy="38"
+                                        r="34"
+                                        stroke="#d97706"
+                                        strokeWidth="4"
+                                        fill="transparent"
+                                        strokeDasharray={2 * Math.PI * 34}
+                                        animate={{ strokeDashoffset: (2 * Math.PI * 34) - (timeLeft / countdownSeconds) * (2 * Math.PI * 34) }}
+                                        transition={{ duration: 1, ease: "linear" }}
+                                    />
+                                </svg>
+                                <div style={{
+                                    position: "absolute",
+                                    fontSize: "24px",
+                                    fontWeight: 900,
+                                    color: "#d97706",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center"
+                                }}>
+                                    {timeLeft}
+                                </div>
                             </div>
                             <p style={{
                                 fontSize: "11px",
