@@ -64,20 +64,26 @@ Upload this Arduino sketch to your ESP32 using the **Arduino IDE**. It listens t
 #include <Arduino.h>
 
 // Map locker numbers to ESP32 GPIO Pins
-// Feel free to modify this array to match your wiring connectors!
+// Directly supports up to 18 lockers per standalone ESP32 DevKit!
 const int LOCKER_PINS[] = {
-  12, // Locker 1 -> GPIO 12
-  13, // Locker 2 -> GPIO 13
-  14, // Locker 3 -> GPIO 14
-  15, // Locker 4 -> GPIO 15
-  2,  // Locker 5 -> GPIO 2  (On-board LED indicator)
-  4,  // Locker 6 -> GPIO 4
-  16, // Locker 7 -> GPIO 16
-  17, // Locker 8 -> GPIO 17
-  18, // Locker 9 -> GPIO 18
+  12, // Locker 1  -> GPIO 12
+  13, // Locker 2  -> GPIO 13
+  14, // Locker 3  -> GPIO 14
+  15, // Locker 4  -> GPIO 15
+  2,  // Locker 5  -> GPIO 2  (On-board LED indicator)
+  4,  // Locker 6  -> GPIO 4
+  16, // Locker 7  -> GPIO 16
+  17, // Locker 8  -> GPIO 17
+  18, // Locker 9  -> GPIO 18
   19, // Locker 10 -> GPIO 19
   21, // Locker 11 -> GPIO 21
-  22  // Locker 12 -> GPIO 22
+  22, // Locker 12 -> GPIO 22
+  23, // Locker 13 -> GPIO 23
+  25, // Locker 14 -> GPIO 25
+  26, // Locker 15 -> GPIO 26
+  27, // Locker 16 -> GPIO 27
+  32, // Locker 17 -> GPIO 32
+  33  // Locker 18 -> GPIO 33
 };
 
 const int NUM_LOCKERS = sizeof(LOCKER_PINS) / sizeof(LOCKER_PINS[0]);
