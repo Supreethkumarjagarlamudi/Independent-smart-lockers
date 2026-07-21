@@ -7,7 +7,7 @@ services:
       - "8000:8000"
     volumes:
       # Persist SQLite database and downloaded SFace/YuNet face models
-      - ./apps/local-api/smart_lockers.db:/app/smart_lockers.db
+      - ./apps/local-api/data:/app/data
       - ./apps/local-api/models_cache:/app/models_cache
       - ./apps/local-api/.env:/app/.env
       # Mount dev tree to access USB Serial controllers and Webcams dynamically

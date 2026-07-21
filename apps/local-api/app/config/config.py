@@ -9,7 +9,9 @@ class Settings:
     
     # Database config (resolved to absolute path in local-api project directory)
     _base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-    _db_path = os.path.join(_base_dir, "smart_lockers.db")
+    _db_dir = os.path.join(_base_dir, "data")
+    os.makedirs(_db_dir, exist_ok=True)
+    _db_path = os.path.join(_db_dir, "smart_lockers.db")
     DATABASE_URL: str = os.getenv("DATABASE_URL", f"sqlite:///{_db_path}")
     
     # UPI Merchant Details
