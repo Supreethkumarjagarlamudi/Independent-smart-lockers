@@ -47,16 +47,30 @@ echo "---> 3/6: Setting Hardware & Container Access Permissions..."
 usermod -aG docker "$REAL_USER" 2>/dev/null
 usermod -aG dialout "$REAL_USER" 2>/dev/null
 
-# Clean up any legacy erroneous directory mounts if present
+# Clean up any legacy erroneous directory mounts created by Docker
 if [ -d "$PROJECT_DIR/apps/local-api/smart_lockers.db" ]; then
-    echo "Cleaning legacy folder mount..."
+    echo "Cleaning legacy folder mount for smart_lockers.db..."
     rm -rf "$PROJECT_DIR/apps/local-api/smart_lockers.db"
+fi
+
+if [ -d "$PROJECT_DIR/apps/local-api/.env" ]; then
+    echo "Cleaning folder artifact for .env..."
+    rm -rf "$PROJECT_DIR/apps/local-api/.env"
+fi
+
+# Ensure .env file exists as a regular file
+if [ ! -f "$PROJECT_DIR/apps/local-api/.env" ]; then
+    if [ -f "$PROJECT_DIR/apps/local-api/.env.example" ]; then
+        cp "$PROJECT_DIR/apps/local-api/.env.example" "$PROJECT_DIR/apps/local-api/.env"
+    else
+        touch "$PROJECT_DIR/apps/local-api/.env"
+    fi
 fi
 
 # Ensure workspace data and models directory exist
 mkdir -p "$PROJECT_DIR/apps/local-api/data"
 mkdir -p "$PROJECT_DIR/apps/local-api/models_cache"
-chown -R "$REAL_USER:$REAL_USER" "$PROJECT_DIR/apps/local-api/data" "$PROJECT_DIR/apps/local-api/models_cache"
+chown -R "$REAL_USER:$REAL_USER" "$PROJECT_DIR/apps/local-api/data" "$PROJECT_DIR/apps/local-api/models_cache" "$PROJECT_DIR/apps/local-api/.env"
 
 echo "---> 4/6: Pulling & Launching Pre-Built Docker Services..."
 cd "$PROJECT_DIR"
