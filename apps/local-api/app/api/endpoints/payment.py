@@ -76,13 +76,23 @@ def create_payment(req: CreatePaymentRequest, db: Session = Depends(get_db)):
                     "description": f"Overdue {target_locker_id} {tx_id}" if req.flow_type == "RETRIEVE" else f"Session {tx_id}",
                     "close_by": int(time.time() + 600)  # expires in 10 minutes
                 })
-                upi_link = qr_data.get("image_content") or qr_data.get("image_url") or qr_data.get("string")
+                img_content = qr_data.get("image_content")
+                img_url = qr_data.get("image_url")
+                raw_string = qr_data.get("string")
+
+                if img_content:
+                    upi_link = img_content if img_content.startswith("data:") else f"data:image/png;base64,{img_content}"
+                elif img_url:
+                    upi_link = img_url
+                else:
+                    upi_link = raw_string
+
                 payment_ref = qr_data.get("id")
                 if not upi_link:
                     raise Exception("Razorpay API did not return image_content, image_url, or string in response.")
             except Exception as e:
-                # Raise the error directly so the operator/user sees why Razorpay QR creation failed
-                raise HTTPException(status_code=400, detail=f"Razorpay API Error: {str(e)}")
+                # Require live Razorpay connection for automatic verification
+                raise HTTPException(status_code=400, detail=f"Payment Gateway Error: {str(e)}")
         
         if not upi_link:
             # Fallback mock UPI

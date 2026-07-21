@@ -23,6 +23,7 @@ import {
     DollarSign,
     Lock,
     Settings,
+    QrCode,
     CreditCard,
     Calendar,
     Menu,
@@ -57,6 +58,227 @@ import type {
 } from "../../api/admin";
 import { getLockers } from "../../api/lockers";
 import type { LockerInfo } from "../../api/lockers";
+
+const AdminQrScanModal = ({ isOpen, onClose, onScanSuccess }: { isOpen: boolean; onClose: () => void; onScanSuccess: (keyId: string, keySecret: string) => void }) => {
+    const videoRef = useRef<HTMLVideoElement | null>(null);
+    const [scanError, setScanError] = useState("");
+    const [jsonInput, setJsonInput] = useState("");
+
+    useEffect(() => {
+        if (!isOpen) return;
+        let stream: MediaStream | null = null;
+        let animationFrameId: number;
+
+        const startScan = async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                    await videoRef.current.play();
+
+                    if ('BarcodeDetector' in window) {
+                        const detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
+                        const scanLoop = async () => {
+                            if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
+                                try {
+                                    const barcodes = await detector.detect(videoRef.current);
+                                    if (barcodes.length > 0) {
+                                        const raw = barcodes[0].rawValue;
+                                        handleRawQr(raw);
+                                        return;
+                                    }
+                                } catch (e) {}
+                            }
+                            animationFrameId = requestAnimationFrame(scanLoop);
+                        };
+                        scanLoop();
+                    }
+                }
+            } catch (err: any) {
+                setScanError("Webcam scanning unavailable. You can paste the JSON credentials below.");
+            }
+        };
+
+        startScan();
+
+        return () => {
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            if (stream) {
+                stream.getTracks().forEach(t => t.stop());
+            }
+        };
+    }, [isOpen]);
+
+    const handleRawQr = (raw: string) => {
+        try {
+            const data = JSON.parse(raw);
+            const keyId = data.key_id || data.razorpay_key_id || data.keyId;
+            const keySecret = data.key_secret || data.razorpay_key_secret || data.keySecret;
+            if (keyId && keySecret) {
+                onScanSuccess(keyId, keySecret);
+                onClose();
+            } else {
+                setScanError("QR code must contain key_id and key_secret fields.");
+            }
+        } catch (e) {
+            setScanError("Invalid QR format. Expecting JSON format: {\"key_id\": \"...\", \"key_secret\": \"...\"}");
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999,
+            backgroundColor: "rgba(15, 23, 42, 0.75)",
+            backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "24px",
+            boxSizing: "border-box"
+        }}>
+            <div style={{
+                backgroundColor: "#ffffff",
+                borderRadius: "24px",
+                padding: "28px",
+                width: "100%",
+                maxWidth: "440px",
+                boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.3)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "20px",
+                border: "1px solid #f1f5f9",
+                boxSizing: "border-box"
+            }}>
+                <div style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    justifyContent: "space-between",
+                    borderBottom: "1px solid #f1f5f9",
+                    paddingBottom: "14px",
+                    gap: "12px"
+                }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                        <h3 style={{ fontSize: "16px", fontWeight: 800, color: "#0f172a", margin: 0, lineHeight: 1.3 }}>Scan Razorpay Credentials QR</h3>
+                        <p style={{ fontSize: "12px", color: "#64748b", margin: 0, fontWeight: 500 }}>Hold the QR code on your phone in front of the camera.</p>
+                    </div>
+                    <button 
+                        onClick={onClose} 
+                        style={{
+                            width: "32px",
+                            height: "32px",
+                            borderRadius: "50%",
+                            backgroundColor: "#f1f5f9",
+                            color: "#64748b",
+                            border: "none",
+                            fontSize: "14px",
+                            fontWeight: 800,
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0
+                        }}
+                    >
+                        ✕
+                    </button>
+                </div>
+
+                <div style={{
+                    width: "100%",
+                    height: "200px",
+                    backgroundColor: "#090d16",
+                    borderRadius: "16px",
+                    overflow: "hidden",
+                    position: "relative",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    border: "1px solid #1e293b"
+                }}>
+                    <video ref={videoRef} style={{ width: "100%", height: "100%", objectFit: "cover" }} playsInline muted />
+                    <div style={{
+                        position: "absolute",
+                        top: "20px",
+                        bottom: "20px",
+                        left: "20px",
+                        right: "20px",
+                        border: "2px dashed rgba(96, 165, 250, 0.8)",
+                        borderRadius: "12px",
+                        pointerEvents: "none"
+                    }} />
+                </div>
+
+                {scanError && (
+                    <p style={{
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        color: "#e11d48",
+                        backgroundColor: "#fff1f2",
+                        padding: "10px 14px",
+                        borderRadius: "12px",
+                        border: "1px solid #fecdd3",
+                        textAlign: "center",
+                        margin: 0
+                    }}>
+                        {scanError}
+                    </p>
+                )}
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    <label style={{ fontSize: "11px", fontWeight: 800, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em" }}>Or Paste Credentials JSON</label>
+                    <input 
+                        type="text"
+                        placeholder='{"key_id":"rzp_live_...","key_secret":"..."}'
+                        value={jsonInput}
+                        onChange={(e) => {
+                            setJsonInput(e.target.value);
+                            if (e.target.value.trim()) handleRawQr(e.target.value.trim());
+                        }}
+                        style={{
+                            width: "100%",
+                            height: "44px",
+                            borderRadius: "12px",
+                            border: "1.5px solid #cbd5e1",
+                            padding: "0 14px",
+                            fontSize: "12px",
+                            fontFamily: "monospace",
+                            backgroundColor: "#f8fafc",
+                            color: "#0f172a",
+                            boxSizing: "border-box",
+                            outline: "none"
+                        }}
+                    />
+                </div>
+
+                <button 
+                    onClick={onClose} 
+                    style={{
+                        width: "100%",
+                        height: "44px",
+                        borderRadius: "12px",
+                        border: "1px solid #cbd5e1",
+                        backgroundColor: "#f1f5f9",
+                        color: "#334155",
+                        fontSize: "13px",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        marginTop: "4px"
+                    }}
+                >
+                    Cancel
+                </button>
+            </div>
+        </div>
+    );
+};
 
 type ActiveTab = "DASHBOARD" | "TRANSACTIONS" | "LOCKERS" | "LOGS" | "DEVTOOLS" | "SETTINGS";
 
@@ -143,6 +365,7 @@ export default function RecoveryPage() {
     const [resetLoading, setResetLoading] = useState(false);
     const [showFactoryConfirm, setShowFactoryConfirm] = useState(false);
     const [factoryLoading, setFactoryLoading] = useState(false);
+    const [showAdminQrModal, setShowAdminQrModal] = useState(false);
 
 
     const refreshData = async () => {
@@ -824,7 +1047,31 @@ export default function RecoveryPage() {
                     </div>
 
                     <div style={{ marginTop: "10px", padding: "14px", border: "1px solid #e2e8f0", borderRadius: "12px", backgroundColor: "#f8fafc", display: "flex", flexDirection: "column", gap: "10px" }}>
-                        <span style={{ fontSize: "11px", fontWeight: "bold", color: "#334155" }}>Razorpay Credentials {configHourlyRate > 0 ? "(Required)" : "(Optional)"}</span>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <span style={{ fontSize: "11px", fontWeight: "bold", color: "#334155" }}>Razorpay Credentials {configHourlyRate > 0 ? "(Required)" : "(Optional)"}</span>
+                            <button
+                                type="button"
+                                onClick={() => setShowAdminQrModal(true)}
+                                style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: "6px",
+                                    padding: "6px 14px",
+                                    borderRadius: "10px",
+                                    backgroundColor: "#eff6ff",
+                                    color: "#1d4ed8",
+                                    border: "1px solid #bfdbfe",
+                                    fontSize: "12px",
+                                    fontWeight: 700,
+                                    cursor: "pointer",
+                                    whiteSpace: "nowrap"
+                                }}
+                            >
+                                <QrCode size={14} />
+                                <span>Scan QR</span>
+                            </button>
+                        </div>
                         
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                             <div>
@@ -1432,6 +1679,15 @@ export default function RecoveryPage() {
                     </div>
                 </div>
             )}
+
+            <AdminQrScanModal 
+                isOpen={showAdminQrModal} 
+                onClose={() => setShowAdminQrModal(false)} 
+                onScanSuccess={(keyId, keySecret) => {
+                    setConfigRazorpayKeyId(keyId);
+                    setConfigRazorpayKeySecret(keySecret);
+                }} 
+            />
         </AppLayout>
     );
 }

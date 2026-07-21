@@ -8,9 +8,10 @@ import { AppLayout } from "./AppLayout";
 
 type KioskShellProps = {
     children: ReactNode;
+    footerCenter?: ReactNode;
 };
 
-export function KioskShell({ children }: KioskShellProps) {
+export function KioskShell({ children, footerCenter }: KioskShellProps) {
     const navigate = useNavigate();
     
     // Load initial values from localStorage cache to prevent flash of default name placeholders
@@ -124,11 +125,12 @@ export function KioskShell({ children }: KioskShellProps) {
                     {/* Footer */}
                     <footer 
                         style={{ 
-                            display: "flex", 
+                            display: "grid", 
+                            gridTemplateColumns: "1fr auto 1fr", 
                             alignItems: "center", 
-                            justifyContent: "space-between", 
+                            gap: "12px", 
                             borderTop: "1px solid #f1f5f9", 
-                            padding: "18px 28px", 
+                            padding: "14px 24px", 
                             userSelect: "none", 
                             flexShrink: 0, 
                             fontSize: "12px", 
@@ -137,15 +139,22 @@ export function KioskShell({ children }: KioskShellProps) {
                             backgroundColor: "#f8fafc" 
                         }}
                     >
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <CheckCircle2 size={16} className="text-green-500" />
-                            <span>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", justifyContent: "flex-start" }}>
+                            <CheckCircle2 size={16} className="text-green-500 shrink-0" />
+                            <span className="whitespace-nowrap">
                                 Status: <span style={{ color: "#16a34a", fontWeight: "bold" }}>Ready</span>
                             </span>
                         </div>
-                        <span className="cursor-default" onClick={() => navigate("/admin")}>
-                            ID: <span style={{ color: "#2563eb", fontWeight: "bold" }}>{generateKioskId()}</span>
-                        </span>
+
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            {footerCenter}
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+                            <span className="cursor-default whitespace-nowrap" onClick={() => navigate("/admin")}>
+                                ID: <span style={{ color: "#2563eb", fontWeight: "bold" }}>{generateKioskId()}</span>
+                            </span>
+                        </div>
                     </footer>
                 </motion.div>
 

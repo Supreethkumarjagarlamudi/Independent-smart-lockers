@@ -45,6 +45,19 @@ export async function getControllers(count: number): Promise<ControllerInfo[]> {
     return response.json();
 }
 
+export interface SetupStatusResponse {
+    initialized: boolean;
+    config: any;
+    razorpay_configured: boolean;
+    masked_key_id: string;
+}
+
+export async function getSetupStatus(): Promise<SetupStatusResponse> {
+    const response = await fetch(`${APP_CONFIG.API_BASE_URL}/api/setup/status`);
+    if (!response.ok) throw new Error("Failed to fetch setup status.");
+    return response.json();
+}
+
 export async function initializeCluster(payload: SetupConfigPayload, update: boolean = false): Promise<{ success: boolean; message: string }> {
     const response = await fetch(`${APP_CONFIG.API_BASE_URL}/api/setup/initialize?update=${update}`, {
         method: "POST",

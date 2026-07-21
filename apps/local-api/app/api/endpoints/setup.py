@@ -1,3 +1,4 @@
+import os
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -44,9 +45,38 @@ class ControllerInfo(BaseModel):
 @router.get("/status")
 def get_setup_status(db: Session = Depends(get_db)):
     config = db.query(SystemConfig).first()
+    
+    env_key_id = os.getenv("RAZORPAY_KEY_ID", "")
+    env_key_secret = os.getenv("RAZORPAY_KEY_SECRET", "")
+    
+    db_key_id = config.razorpay_key_id if config and config.razorpay_key_id else ""
+    db_key_secret = config.razorpay_key_secret if config and config.razorpay_key_secret else ""
+    
+    active_key_id = db_key_id or env_key_id
+    active_key_secret = db_key_secret or env_key_secret
+    
+    razorpay_configured = bool(active_key_id and active_key_secret)
+    
+    masked_key_id = ""
+    if active_key_id:
+        if len(active_key_id) > 8:
+            masked_key_id = active_key_id[:4] + "••••••••" + active_key_id[-4:]
+        else:
+            masked_key_id = active_key_id[:2] + "••••"
+
     if config:
-        return {"initialized": config.initialized, "config": config}
-    return {"initialized": False, "config": None}
+        return {
+            "initialized": config.initialized,
+            "config": config,
+            "razorpay_configured": razorpay_configured,
+            "masked_key_id": masked_key_id
+        }
+    return {
+        "initialized": False,
+        "config": None,
+        "razorpay_configured": razorpay_configured,
+        "masked_key_id": masked_key_id
+    }
 
 @router.get("/cameras", response_model=List[CameraInfo])
 def discover_cameras():
@@ -128,6 +158,10 @@ def discover_controllers(count: Optional[int] = None):
 @router.post("/initialize")
 def initialize_cluster(schema: ConfigSetupSchema, update: Optional[bool] = False, db: Session = Depends(get_db)):
     try:
+        # Fallback to env keys if admin left them blank
+        final_key_id = schema.razorpay_key_id.strip() if schema.razorpay_key_id and schema.razorpay_key_id.strip() else os.getenv("RAZORPAY_KEY_ID", "")
+        final_key_secret = schema.razorpay_key_secret.strip() if schema.razorpay_key_secret and schema.razorpay_key_secret.strip() else os.getenv("RAZORPAY_KEY_SECRET", "")
+
         # Check if update mode
         if update:
             config = db.query(SystemConfig).first()
@@ -143,8 +177,8 @@ def initialize_cluster(schema: ConfigSetupSchema, update: Optional[bool] = False
                 config.camera_model = schema.camera_model
                 config.controllers_count = schema.controllers_count
                 config.lockers_count = schema.lockers_count
-                config.razorpay_key_id = schema.razorpay_key_id
-                config.razorpay_key_secret = schema.razorpay_key_secret
+                config.razorpay_key_id = final_key_id
+                config.razorpay_key_secret = final_key_secret
                 if schema.admin_password:
                     config.admin_password = schema.admin_password
                 if schema.face_threshold is not None:
@@ -164,8 +198,8 @@ def initialize_cluster(schema: ConfigSetupSchema, update: Optional[bool] = False
                     camera_model=schema.camera_model,
                     controllers_count=schema.controllers_count,
                     lockers_count=schema.lockers_count,
-                    razorpay_key_id=schema.razorpay_key_id,
-                    razorpay_key_secret=schema.razorpay_key_secret,
+                    razorpay_key_id=final_key_id,
+                    razorpay_key_secret=final_key_secret,
                     admin_password=schema.admin_password if schema.admin_password else "admin123",
                     face_threshold=schema.face_threshold if schema.face_threshold is not None else 0.80,
                     liveness_enabled=schema.liveness_enabled if schema.liveness_enabled is not None else True,
@@ -190,8 +224,8 @@ def initialize_cluster(schema: ConfigSetupSchema, update: Optional[bool] = False
                 camera_model=schema.camera_model,
                 controllers_count=schema.controllers_count,
                 lockers_count=schema.lockers_count,
-                razorpay_key_id=schema.razorpay_key_id,
-                razorpay_key_secret=schema.razorpay_key_secret,
+                razorpay_key_id=final_key_id,
+                razorpay_key_secret=final_key_secret,
                 admin_password=schema.admin_password if schema.admin_password else "admin123",
                 face_threshold=schema.face_threshold if schema.face_threshold is not None else 0.80,
                 liveness_enabled=schema.liveness_enabled if schema.liveness_enabled is not None else True,

@@ -10,6 +10,10 @@ from app.models.models import Locker, Transaction, SystemLog, SystemConfig
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
+class UpdatePaymentKeysRequest(BaseModel):
+    razorpay_key_id: str
+    razorpay_key_secret: str
+
 class OverrideLockerRequest(BaseModel):
     locker_id: str
     action: str  # "UNLOCK", "RELEASE", "MAINTENANCE", "AVAILABLE"
@@ -441,4 +445,23 @@ def factory_reset(db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Factory reset failed: {str(e)}")
+
+
+@router.post("/update-keys")
+def update_payment_keys(req: UpdatePaymentKeysRequest, db: Session = Depends(get_db)):
+    """Updates Razorpay API credentials in DB config and active environment."""
+    config = db.query(SystemConfig).first()
+    if not config:
+        raise HTTPException(status_code=400, detail="System not initialized")
+    
+    config.razorpay_key_id = req.razorpay_key_id.strip()
+    config.razorpay_key_secret = req.razorpay_key_secret.strip()
+    db.commit()
+    
+    os.environ["RAZORPAY_KEY_ID"] = config.razorpay_key_id
+    os.environ["RAZORPAY_KEY_SECRET"] = config.razorpay_key_secret
+    
+    masked = config.razorpay_key_id[:4] + "••••••••" + config.razorpay_key_id[-4:] if len(config.razorpay_key_id) > 8 else "••••"
+    return {"success": True, "message": "Payment credentials updated successfully", "masked_key_id": masked}
+
 

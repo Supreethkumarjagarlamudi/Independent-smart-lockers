@@ -58,6 +58,25 @@ if [ -d "$PROJECT_DIR/apps/local-api/.env" ]; then
     rm -rf "$PROJECT_DIR/apps/local-api/.env"
 fi
 
+# Parse optional command line flags for Razorpay Pre-provisioning
+KEY_ID=""
+KEY_SECRET=""
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --key-id)
+      KEY_ID="$2"
+      shift 2
+      ;;
+    --key-secret)
+      KEY_SECRET="$2"
+      shift 2
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
 # Ensure .env file exists as a regular file
 if [ ! -f "$PROJECT_DIR/apps/local-api/.env" ]; then
     if [ -f "$PROJECT_DIR/apps/local-api/.env.example" ]; then
@@ -65,6 +84,14 @@ if [ ! -f "$PROJECT_DIR/apps/local-api/.env" ]; then
     else
         touch "$PROJECT_DIR/apps/local-api/.env"
     fi
+fi
+
+if [ -n "$KEY_ID" ]; then
+    echo "🔑 Provisioning Razorpay credentials into .env..."
+    sed -i '/RAZORPAY_KEY_ID=/d' "$PROJECT_DIR/apps/local-api/.env" 2>/dev/null || true
+    sed -i '/RAZORPAY_KEY_SECRET=/d' "$PROJECT_DIR/apps/local-api/.env" 2>/dev/null || true
+    echo "RAZORPAY_KEY_ID=$KEY_ID" >> "$PROJECT_DIR/apps/local-api/.env"
+    echo "RAZORPAY_KEY_SECRET=$KEY_SECRET" >> "$PROJECT_DIR/apps/local-api/.env"
 fi
 
 # Ensure workspace data and models directory exist

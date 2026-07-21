@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { 
     ArrowLeft, 
     RefreshCw, 
-    CheckCircle2
+    CheckCircle2,
+    QrCode
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -18,6 +19,7 @@ import {
 import type { PaymentCreateResponse } from "../../api/payment";
 import { registerFace } from "../../api/face";
 import { unlockLocker } from "../../api/lockers";
+import { APP_CONFIG } from "../../config/app";
 
 type DepositStep = "DURATION" | "PAYMENT" | "FACE_REG" | "OPENING" | "ASSIGNED" | "SUCCESS";
 
@@ -25,6 +27,7 @@ export default function DepositPage() {
     const navigate = useNavigate();
     const [step, setStep] = useState<DepositStep>("DURATION");
     const [isLoading, setIsLoading] = useState(false);
+    const [isQrLoading, setIsQrLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState("");
     const [openProgress, setOpenProgress] = useState(0);
     const isMountedRef = useRef(true);
@@ -90,7 +93,7 @@ export default function DepositPage() {
     useEffect(() => {
         const fetchConfig = async () => {
             try {
-                const response = await fetch("http://localhost:8000/api/setup/status");
+                const response = await fetch(`${APP_CONFIG.API_BASE_URL}/api/setup/status`);
                 if (response.ok) {
                     const data = await response.json();
                     if (data.initialized && data.config) {
@@ -520,11 +523,16 @@ export default function DepositPage() {
             );
         }
 
-        const qrDataUrl = paymentData 
-            ? (paymentData.upi_link.startsWith("http") 
-                ? paymentData.upi_link 
-                : `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(paymentData.upi_link)}`)
-            : "";
+        const getQrImageUrl = (link: string) => {
+            if (!link) return "";
+            if (link.startsWith("data:") || link.startsWith("blob:") || link.startsWith("http")) {
+                return link;
+            }
+            return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=0&data=${encodeURIComponent(link)}`;
+        };
+
+        const qrDataUrl = paymentData ? getQrImageUrl(paymentData.upi_link) : "";
+        const isPosterImage = Boolean(qrDataUrl && (qrDataUrl.startsWith("data:") || qrDataUrl.startsWith("http")));
 
         return (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "24px", width: "100%", userSelect: "none" }}>
@@ -554,30 +562,45 @@ export default function DepositPage() {
                     {/* QR Frame */}
                     <div 
                         style={{ 
-                            margin: "20px 0", 
-                            padding: "12px", 
-                            borderRadius: "16px", 
+                            margin: "16px 0", 
+                            padding: "0px", 
+                            borderRadius: "20px", 
                             backgroundColor: "#ffffff", 
-                            border: "1px solid #f1f5f9", 
+                            border: "1px solid #e2e8f0", 
                             display: "flex", 
                             alignItems: "center", 
                             justifyContent: "center", 
-                            width: "192px", 
-                            height: "192px",
+                            width: "220px", 
+                            height: "220px",
                             overflow: "hidden",
                             position: "relative"
                         }}
                     >
+                        {/* Skeleton Shimmer Loading Bar */}
+                        {isQrLoading && (
+                            <div className="absolute inset-0 bg-slate-50 flex flex-col items-center justify-center gap-2.5 p-4 z-10">
+                                <div className="w-10 h-10 rounded-xl bg-blue-100/80 flex items-center justify-center animate-bounce">
+                                    <QrCode size={20} className="text-blue-600" />
+                                </div>
+                                <div className="w-24 h-2.5 rounded-full bg-slate-200 animate-pulse" />
+                                <div className="w-16 h-2 rounded-full bg-slate-200 animate-pulse" />
+                            </div>
+                        )}
+
                         {qrDataUrl ? (
                             <img 
                                 src={qrDataUrl} 
                                 alt="UPI QR Code" 
+                                onLoad={() => setIsQrLoading(false)}
                                 style={{ 
-                                    width: "100%", 
-                                    height: "100%", 
-                                    objectFit: "contain",
-                                    transform: paymentData?.upi_link?.startsWith("http") ? "scale(3.64)" : "none",
-                                    transformOrigin: "center"
+                                    width: "100%",
+                                    height: "100%",
+                                    objectFit: "cover",
+                                    transform: isPosterImage
+                                        ? "translateY(-14px) scale(1.6)"
+                                        : "none",
+                                    opacity: isQrLoading ? 0 : 1,
+                                    transition: "opacity 0.3s ease"
                                 }} 
                             />
                         ) : (
