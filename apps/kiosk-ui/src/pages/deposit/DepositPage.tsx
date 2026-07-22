@@ -204,6 +204,7 @@ export default function DepositPage() {
     };
 
     const cameraStreamRef = useRef<MediaStream | null>(null);
+    const [cameraSettings, setCameraSettings] = useState<MediaTrackSettings | null>(null);
 
     // Camera Handlers
     const startCamera = async () => {
@@ -225,7 +226,9 @@ export default function DepositPage() {
 
             const track = stream.getVideoTracks()[0];
             if (track) {
-                console.log("Deposit Camera - Track Settings:", track.getSettings());
+                const settings = track.getSettings();
+                setCameraSettings(settings);
+                console.log("Deposit Camera - Track Settings:", settings);
                 if (typeof track.getCapabilities === "function") {
                     console.log("Deposit Camera - Track Capabilities:", track.getCapabilities());
                 }
@@ -254,6 +257,7 @@ export default function DepositPage() {
             });
             setCameraStream(null);
             cameraStreamRef.current = null;
+            setCameraSettings(null);
         }
         if (videoRef.current) {
             videoRef.current.srcObject = null;
@@ -685,6 +689,12 @@ export default function DepositPage() {
                             muted 
                             playsInline
                         />
+                    )}
+                    
+                    {cameraSettings && (
+                        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-slate-950/85 text-white text-[9px] px-2 py-0.5 rounded font-mono font-bold z-10 pointer-events-none border border-white/10 shadow-lg">
+                            {cameraSettings.width}x{cameraSettings.height}
+                        </div>
                     )}
                     
                     {/* Radial progress ring SVG */}

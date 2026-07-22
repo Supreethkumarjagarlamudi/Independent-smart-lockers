@@ -62,6 +62,7 @@ export default function RetrievePage() {
 
     const isMountedRef = useRef(true);
     const cameraStreamRef = useRef<MediaStream | null>(null);
+    const [cameraSettings, setCameraSettings] = useState<MediaTrackSettings | null>(null);
 
     const startCamera = async () => {
         setCameraError(false);
@@ -82,7 +83,9 @@ export default function RetrievePage() {
 
             const track = stream.getVideoTracks()[0];
             if (track) {
-                console.log("Retrieve Camera - Track Settings:", track.getSettings());
+                const settings = track.getSettings();
+                setCameraSettings(settings);
+                console.log("Retrieve Camera - Track Settings:", settings);
                 if (typeof track.getCapabilities === "function") {
                     console.log("Retrieve Camera - Track Capabilities:", track.getCapabilities());
                 }
@@ -111,6 +114,7 @@ export default function RetrievePage() {
             });
             setCameraStream(null);
             cameraStreamRef.current = null;
+            setCameraSettings(null);
         }
         if (videoRef.current) {
             videoRef.current.srcObject = null;
@@ -473,6 +477,12 @@ export default function RetrievePage() {
                             muted 
                             playsInline
                         />
+                    )}
+                    
+                    {cameraSettings && (
+                        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-slate-950/85 text-white text-[9px] px-2 py-0.5 rounded font-mono font-bold z-10 pointer-events-none border border-white/10 shadow-lg">
+                            {cameraSettings.width}x{cameraSettings.height}
+                        </div>
                     )}
                     
                     {!cameraError && (

@@ -1,4 +1,5 @@
 import { CheckCircle2 } from "lucide-react";
+import { APP_CONFIG } from "../../config/app";
 
 
 export function HomeFooter() {
@@ -24,7 +25,7 @@ export function HomeFooter() {
         />
 
         <span className="text-sm font-medium text-slate-700">
-            Ready
+            Ready ({APP_CONFIG.APP_VERSION})
         </span>
 
     </div>

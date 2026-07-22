@@ -356,6 +356,7 @@ export default function RecoveryPage() {
     const [liveDebugResult, setLiveDebugResult] = useState<FaceDebugLiveResult | null>(null);
     const [liveDebugLoading, setLiveDebugLoading] = useState(false);
     const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+    const [cameraSettings, setCameraSettings] = useState<MediaTrackSettings | null>(null);
     const [cameraError, setCameraError] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -429,7 +430,9 @@ export default function RecoveryPage() {
 
             const track = stream.getVideoTracks()[0];
             if (track) {
-                console.log("Recovery/Dev Camera - Track Settings:", track.getSettings());
+                const settings = track.getSettings();
+                setCameraSettings(settings);
+                console.log("Recovery/Dev Camera - Track Settings:", settings);
                 if (typeof track.getCapabilities === "function") {
                     console.log("Recovery/Dev Camera - Track Capabilities:", track.getCapabilities());
                 }
@@ -444,6 +447,7 @@ export default function RecoveryPage() {
     const stopDevCamera = () => {
         cameraStream?.getTracks().forEach((t) => t.stop());
         setCameraStream(null);
+        setCameraSettings(null);
         if (videoRef.current) videoRef.current.srcObject = null;
     };
 
@@ -1275,7 +1279,14 @@ export default function RecoveryPage() {
                     <div style={{ position: "relative", height: "220px", borderRadius: "18px", overflow: "hidden", background: "#0f172a" }}>
                         {/* Video / placeholder */}
                         {cameraStream ? (
-                            <video ref={videoRef} style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)" }} muted playsInline />
+                            <>
+                                <video ref={videoRef} style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)" }} muted playsInline />
+                                {cameraSettings && (
+                                    <div style={{ position: "absolute", top: "10px", left: "10px", background: "rgba(15, 23, 42, 0.75)", color: "#fff", padding: "4px 8px", borderRadius: "6px", fontSize: "10px", fontWeight: 700, fontFamily: "monospace", backdropFilter: "blur(4px)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                                        {cameraSettings.width}x{cameraSettings.height} @ {cameraSettings.frameRate ? Math.round(cameraSettings.frameRate) : "?"}fps
+                                    </div>
+                                )}
+                            </>
                         ) : (
                             <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "10px" }}>
                                 <Camera size={32} color="#334155" />
