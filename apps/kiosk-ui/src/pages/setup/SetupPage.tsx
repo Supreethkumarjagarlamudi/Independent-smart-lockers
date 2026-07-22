@@ -355,12 +355,23 @@ export default function SetupPage() {
             const constraints = {
                 video: { 
                     deviceId: selectedCamera ? { exact: selectedCamera } : undefined,
-                    width: { ideal: 640 }, 
-                    height: { ideal: 480 } 
+                    width: { ideal: 1280 }, 
+                    height: { ideal: 720 },
+                    frameRate: { ideal: 30 }
                 }
             };
             
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+            const track = stream.getVideoTracks()[0];
+            if (track) {
+                console.log("Setup Camera - Track Settings:", track.getSettings());
+                if (typeof track.getCapabilities === "function") {
+                    console.log("Setup Camera - Track Capabilities:", track.getCapabilities());
+                }
+                console.log("Setup Camera - Track Constraints:", track.getConstraints());
+            }
+
             mediaStreamRef.current = stream;
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;

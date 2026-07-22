@@ -419,7 +419,23 @@ export default function RecoveryPage() {
     const startDevCamera = async () => {
         setCameraError(false);
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 480, height: 480 } });
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    width: { ideal: 1280 }, 
+                    height: { ideal: 720 }, 
+                    frameRate: { ideal: 30 } 
+                } 
+            });
+
+            const track = stream.getVideoTracks()[0];
+            if (track) {
+                console.log("Recovery/Dev Camera - Track Settings:", track.getSettings());
+                if (typeof track.getCapabilities === "function") {
+                    console.log("Recovery/Dev Camera - Track Capabilities:", track.getCapabilities());
+                }
+                console.log("Recovery/Dev Camera - Track Constraints:", track.getConstraints());
+            }
+
             // Just set the state — the useEffect above will attach srcObject after render
             setCameraStream(stream);
         } catch { setCameraError(true); }
@@ -444,9 +460,16 @@ export default function RecoveryPage() {
             const canvas = document.createElement("canvas");
             canvas.width = 480; canvas.height = 480;
             const ctx = canvas.getContext("2d");
-            if (ctx) {
+            if (ctx && videoRef.current) {
                 ctx.translate(480, 0); ctx.scale(-1, 1);
-                ctx.drawImage(videoRef.current, 0, 0, 480, 480);
+                
+                const videoWidth = videoRef.current.videoWidth || 640;
+                const videoHeight = videoRef.current.videoHeight || 480;
+                const sSize = Math.min(videoWidth, videoHeight);
+                const sx = (videoWidth - sSize) / 2;
+                const sy = (videoHeight - sSize) / 2;
+                
+                ctx.drawImage(videoRef.current, sx, sy, sSize, sSize, 0, 0, 480, 480);
                 const img = canvas.toDataURL("image/jpeg", 0.92);
                 setLiveDebugResult(await runFaceDebugLive(img));
             }

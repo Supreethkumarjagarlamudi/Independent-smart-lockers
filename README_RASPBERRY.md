@@ -63,6 +63,13 @@ Upload this Arduino sketch to your ESP32 using the **Arduino IDE**. It listens t
 ```cpp
 #include <Arduino.h>
 
+// Set this to true if your relay triggers when the pin is LOW (Active Low)
+// Set this to false if your relay triggers when the pin is HIGH (Active High)
+#define RELAY_ACTIVE_LOW true 
+
+const int RELAY_ON = RELAY_ACTIVE_LOW ? LOW : HIGH;
+const int RELAY_OFF = RELAY_ACTIVE_LOW ? HIGH : LOW;
+
 // Map locker numbers to ESP32 GPIO Pins
 // Directly supports up to 18 lockers per standalone ESP32 DevKit!
 const int LOCKER_PINS[] = {
@@ -96,10 +103,10 @@ void setup() {
   
   Serial.println("ESP32: Smart Locker Controller Online");
 
-  // Initialize lock pins as output and set them LOW (relays off)
+  // Initialize lock pins as output and set them to OFF state
   for (int i = 0; i < NUM_LOCKERS; i++) {
     pinMode(LOCKER_PINS[i], OUTPUT);
-    digitalWrite(LOCKER_PINS[i], LOW);
+    digitalWrite(LOCKER_PINS[i], RELAY_OFF);
     Serial.printf("Initialized Locker %d on GPIO %d\n", i + 1, LOCKER_PINS[i]);
   }
 }
@@ -123,9 +130,9 @@ void loop() {
           Serial.printf("OK UNLOCKING LOCKER %d (GPIO %d)\n", lockerNum, gpioPin);
           
           // Trigger solenoid: Turn Relay ON, wait 1 second, Turn OFF
-          digitalWrite(gpioPin, HIGH);
+          digitalWrite(gpioPin, RELAY_ON);
           delay(1000); // 1-second pulse to release latch
-          digitalWrite(gpioPin, LOW);
+          digitalWrite(gpioPin, RELAY_OFF);
           
           Serial.printf("OK UNLOCKED %d\n", lockerNum);
         } else {

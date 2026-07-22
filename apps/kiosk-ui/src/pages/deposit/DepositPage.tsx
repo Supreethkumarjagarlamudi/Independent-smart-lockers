@@ -210,13 +210,26 @@ export default function DepositPage() {
         setCameraError(false);
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { width: 480, height: 480, aspectRatio: 1 } 
+                video: { 
+                    width: { ideal: 1280 }, 
+                    height: { ideal: 720 }, 
+                    frameRate: { ideal: 30 } 
+                } 
             });
             
             // If component unmounted while getUserMedia was resolving, stop the tracks immediately
             if (!isMountedRef.current) {
                 stream.getTracks().forEach((track) => track.stop());
                 return;
+            }
+
+            const track = stream.getVideoTracks()[0];
+            if (track) {
+                console.log("Deposit Camera - Track Settings:", track.getSettings());
+                if (typeof track.getCapabilities === "function") {
+                    console.log("Deposit Camera - Track Capabilities:", track.getCapabilities());
+                }
+                console.log("Deposit Camera - Track Constraints:", track.getConstraints());
             }
 
             setCameraStream(stream);
@@ -270,10 +283,17 @@ export default function DepositPage() {
             canvas.height = 480;
             const ctx = canvas.getContext("2d");
             
-            if (ctx) {
+            if (ctx && videoRef.current) {
                 ctx.translate(480, 0);
                 ctx.scale(-1, 1);
-                ctx.drawImage(videoRef.current, 0, 0, 480, 480);
+                
+                const videoWidth = videoRef.current.videoWidth || 640;
+                const videoHeight = videoRef.current.videoHeight || 480;
+                const sSize = Math.min(videoWidth, videoHeight);
+                const sx = (videoWidth - sSize) / 2;
+                const sy = (videoHeight - sSize) / 2;
+                
+                ctx.drawImage(videoRef.current, sx, sy, sSize, sSize, 0, 0, 480, 480);
                 
                 const base64Image = canvas.toDataURL("image/jpeg", 0.95);
                 await registerFace(activePayment.transaction_id, base64Image);
