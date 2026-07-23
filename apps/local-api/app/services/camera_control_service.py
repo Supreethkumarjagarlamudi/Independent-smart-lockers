@@ -3,10 +3,13 @@ import subprocess
 import os
 import json
 
+from app.services.camera_configuration_repository import CameraConfigurationRepository
+
 class CameraControlService:
     def __init__(self, device_path="/dev/video0", settings_path="camera_settings.json"):
         self.device_path = device_path
-        self.settings_path = settings_path
+        self.repository = CameraConfigurationRepository(settings_path)
+
 
     def _is_linux(self):
         return os.name != "nt" and hasattr(os, "uname") and os.uname().sysname == "Linux"
@@ -196,20 +199,10 @@ class CameraControlService:
     def save_control_setting(self, name, value):
         settings = self.load_saved_settings()
         settings[name] = value
-        try:
-            with open(self.settings_path, "w") as f:
-                json.dump(settings, f, indent=4)
-        except Exception as e:
-            print(f"Failed to save settings file: {e}")
+        self.repository.save_configuration(settings)
 
     def load_saved_settings(self):
-        if not os.path.exists(self.settings_path):
-            return {}
-        try:
-            with open(self.settings_path, "r") as f:
-                return json.load(f)
-        except Exception:
-            return {}
+        return self.repository.load_configuration()
 
     def apply_saved_settings(self):
         """
@@ -221,3 +214,4 @@ class CameraControlService:
         print(f"Loading and applying {len(settings)} saved camera settings...")
         for name, val in settings.items():
             self.set_control(name, val)
+

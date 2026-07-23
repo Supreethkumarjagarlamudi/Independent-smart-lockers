@@ -6,18 +6,17 @@ import numpy as np
 import cv2
 
 from app.services.camera_control_service import CameraControlService
-from app.services.image_quality_analyzer import ImageQualityAnalyzer
-from app.services.face_quality_analyzer import FaceQualityAnalyzer
-from app.services.recommendation_engine import RecommendationEngine
-from app.services.recognition_test_service import RecognitionTestService
+from app.services.camera_validation_service import CameraValidationService
+from app.services.camera_configuration_repository import CameraConfigurationRepository
+from app.services.validation_report_service import ValidationReportService
 from app.services.face_recognition_service import face_recognition_service
 
 router = APIRouter(prefix="/api/calibration", tags=["calibration"])
 
 # Instantiations
 camera_control = CameraControlService()
-face_analyzer = FaceQualityAnalyzer(face_recognition_service.detector)
-recognition_tester = RecognitionTestService(face_recognition_service)
+validation_service = CameraValidationService(face_recognition_service.detector)
+config_repo = CameraConfigurationRepository()
 
 # Schemas
 class SetControlRequest(BaseModel):
@@ -27,10 +26,7 @@ class SetControlRequest(BaseModel):
 class AnalyzeFrameRequest(BaseModel):
     image: str  # Base64 string
 
-class AutoTuneRequest(BaseModel):
-    image: str  # Base64 string
-
-class TestRecognitionRequest(BaseModel):
+class ReportRequest(BaseModel):
     image: str  # Base64 string
 
 def decode_base64_img(base64_str: str) -> np.ndarray:
@@ -50,6 +46,7 @@ def list_controls():
 
 @router.post("/set-control")
 def set_control(req: SetControlRequest):
+    # Directly set control value manually, NEVER automatically tuning
     success = camera_control.set_control(req.name, req.value)
     if not success:
         raise HTTPException(status_code=400, detail=f"Failed to set control {req.name}.")
@@ -62,68 +59,28 @@ def analyze_frame(req: AnalyzeFrameRequest):
         if img is None:
             raise HTTPException(status_code=400, detail="Invalid image data.")
             
-        # Run analyzers
-        img_metrics = ImageQualityAnalyzer.analyze_frame(img)
-        face_metrics = face_analyzer.analyze_face(img)
-        
-        # Run recommendation synthesis
-        evaluation = RecommendationEngine.evaluate(img_metrics, face_metrics)
-        
-        return {
-            "image_quality": img_metrics,
-            "face_quality": face_metrics,
-            "evaluation": evaluation
-        }
+        results = validation_service.validate_frame(img)
+        return results
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
-@router.post("/autotune")
-def auto_tune_assistant(req: AutoTuneRequest):
-    try:
-        img = decode_base64_img(req.image)
-        if img is None:
-            raise HTTPException(status_code=400, detail="Invalid image data.")
-            
-        img_metrics = ImageQualityAnalyzer.analyze_frame(img)
-        face_metrics = face_analyzer.analyze_face(img)
-        
-        controls = camera_control.list_controls()
-        
-        suggestions = RecommendationEngine.suggest_auto_tune(
-            controls, 
-            img_metrics.get("avg_brightness", 120),
-            face_metrics.get("face_brightness", 120),
-            img_metrics.get("sharpness", 200)
-        )
-        return {"suggestions": suggestions}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Auto tune failed: {str(e)}")
-
-@router.post("/test-recognition")
-def test_recognition(req: TestRecognitionRequest):
-    try:
-        img = decode_base64_img(req.image)
-        if img is None:
-            raise HTTPException(status_code=400, detail="Invalid image data.")
-            
-        test_results = recognition_tester.test_pipeline(img)
-        return test_results
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Recognition test pipeline failed: {str(e)}")
-
 @router.post("/save")
 def save_calibration():
-    # Settings are auto-saved to file when set_control is invoked
+    # settings are loaded from camera_control and explicitly saved to system profile
+    settings = camera_control.load_saved_settings()
+    success = config_repo.save_configuration(settings)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to save calibration profile.")
     return {"success": True, "message": "Calibration profile saved locally successfully."}
 
 @router.post("/reset")
 def reset_calibration():
     try:
-        # Clear settings file
-        if os.path.exists(camera_control.settings_path):
-            os.remove(camera_control.settings_path)
+        success = config_repo.reset_to_defaults()
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to clear settings file.")
             
-        # Restore default values
+        # Restore default values on active camera
         controls = camera_control.list_controls()
         for ctrl in controls:
             camera_control.set_control(ctrl["name"], ctrl["default"])
@@ -131,3 +88,27 @@ def reset_calibration():
         return {"success": True, "message": "Camera calibration reset to default parameters."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to reset calibration: {str(e)}")
+
+@router.post("/reload")
+def reload_calibration():
+    try:
+        camera_control.apply_saved_settings()
+        return {"success": True, "message": "Configuration reloaded and applied successfully."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to reload configuration: {str(e)}")
+
+@router.post("/report")
+def generate_report(req: ReportRequest):
+    try:
+        img = decode_base64_img(req.image)
+        if img is None:
+            raise HTTPException(status_code=400, detail="Invalid image data.")
+        
+        device_info = camera_control.get_device_info()
+        camera_config = camera_control.load_saved_settings()
+        validation_results = validation_service.validate_frame(img)
+        
+        report = ValidationReportService.generate_report(device_info, camera_config, validation_results)
+        return report
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate report: {str(e)}")
