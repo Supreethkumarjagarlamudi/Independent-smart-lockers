@@ -210,6 +210,11 @@ class CameraControlService:
         """
         settings = self.load_saved_settings()
         if not settings:
+            controls = self.list_controls()
+            settings = {ctrl["name"]: ctrl["default"] for ctrl in controls}
+            print(f"No saved camera settings found. Applying default settings: {settings}")
+            for name, val in settings.items():
+                self.set_control(name, val)
             return
         print(f"Loading and applying {len(settings)} saved camera settings...")
         for name, val in settings.items():

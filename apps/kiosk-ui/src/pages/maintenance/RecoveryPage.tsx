@@ -1128,12 +1128,6 @@ export default function RecoveryPage() {
                             <p style={{ fontSize: "12px", color: "#94a3b8" }}>Capture a frame and see raw cosine similarity scores vs every enrolled face</p>
                         </div>
                     </div>
-                    <button 
-                        onClick={() => navigate("/admin/calibration")}
-                        style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", borderRadius: "10px", border: "1.5px solid #2563eb", background: "#2563eb", color: "#fff", fontWeight: 700, fontSize: "12px", cursor: "pointer" }}
-                    >
-                        <Camera size={14} /> Calibration Dashboard
-                    </button>
                 </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "18px", alignItems: "start" }}>

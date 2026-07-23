@@ -6,7 +6,6 @@ import SetupPage from "../pages/setup/SetupPage";
 import DepositPage from "../pages/deposit/DepositPage";
 import RetrievePage from "../pages/retrieve/RetrievePage";
 import RecoveryPage from "../pages/maintenance/RecoveryPage";
-import CameraCalibration from "../pages/maintenance/CameraCalibration";
 
 export default function AppRouter() {
     return (
@@ -40,11 +39,6 @@ export default function AppRouter() {
                 <Route
                     path="/admin"
                     element={<RecoveryPage />}
-                />
-
-                <Route
-                    path="/admin/calibration"
-                    element={<CameraCalibration />}
                 />
             </Routes>
         </BrowserRouter>
