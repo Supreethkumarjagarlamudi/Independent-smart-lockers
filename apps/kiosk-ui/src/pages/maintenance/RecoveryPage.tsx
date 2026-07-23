@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import Webcam from "react-webcam";
 import {
     LayoutDashboard,
     Layers,
@@ -58,52 +59,43 @@ import { getLockers } from "../../api/lockers";
 import type { LockerInfo } from "../../api/lockers";
 
 const AdminQrScanModal = ({ isOpen, onClose, onScanSuccess }: { isOpen: boolean; onClose: () => void; onScanSuccess: (keyId: string, keySecret: string) => void }) => {
-    const videoRef = useRef<HTMLVideoElement | null>(null);
+    const webcamRef = useRef<Webcam | null>(null);
     const [scanError, setScanError] = useState("");
     const [jsonInput, setJsonInput] = useState("");
 
     useEffect(() => {
         if (!isOpen) return;
-        let stream: MediaStream | null = null;
         let animationFrameId: number;
 
         const startScan = async () => {
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-                if (videoRef.current) {
-                    videoRef.current.srcObject = stream;
-                    await videoRef.current.play();
-
-                    if ('BarcodeDetector' in window) {
-                        const detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
-                        const scanLoop = async () => {
-                            if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
-                                try {
-                                    const barcodes = await detector.detect(videoRef.current);
-                                    if (barcodes.length > 0) {
-                                        const raw = barcodes[0].rawValue;
-                                        handleRawQr(raw);
-                                        return;
-                                    }
-                                } catch (e) {}
+            if ('BarcodeDetector' in window) {
+                const detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
+                const scanLoop = async () => {
+                    const video = webcamRef.current?.video;
+                    if (video && video.readyState === video.HAVE_ENOUGH_DATA) {
+                        try {
+                            const barcodes = await detector.detect(video);
+                            if (barcodes.length > 0) {
+                                const raw = barcodes[0].rawValue;
+                                handleRawQr(raw);
+                                return;
                             }
-                            animationFrameId = requestAnimationFrame(scanLoop);
-                        };
-                        scanLoop();
+                        } catch (e) {}
                     }
-                }
-            } catch (err: any) {
-                setScanError("Webcam scanning unavailable. You can paste the JSON credentials below.");
+                    animationFrameId = requestAnimationFrame(scanLoop);
+                };
+                scanLoop();
             }
         };
 
-        startScan();
+        // Start scanning after small delay to ensure Webcam is mounted/ready
+        const timer = setTimeout(() => {
+            startScan();
+        }, 800);
 
         return () => {
+            clearTimeout(timer);
             if (animationFrameId) cancelAnimationFrame(animationFrameId);
-            if (stream) {
-                stream.getTracks().forEach(t => t.stop());
-            }
         };
     }, [isOpen]);
 
@@ -201,7 +193,17 @@ const AdminQrScanModal = ({ isOpen, onClose, onScanSuccess }: { isOpen: boolean;
                     justifyContent: "center",
                     border: "1px solid #1e293b"
                 }}>
-                    <video ref={videoRef} style={{ width: "100%", height: "100%", objectFit: "cover" }} playsInline muted />
+                    <Webcam
+                        ref={webcamRef}
+                        audio={false}
+                        videoConstraints={{
+                            facingMode: "environment"
+                        }}
+                        onUserMediaError={() => {
+                            setScanError("Webcam scanning unavailable. You can paste the JSON credentials below.");
+                        }}
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
                     <div style={{
                         position: "absolute",
                         top: "20px",
@@ -346,9 +348,10 @@ export default function RecoveryPage() {
     const [liveDebugResult, setLiveDebugResult] = useState<FaceDebugLiveResult | null>(null);
     const [liveDebugLoading, setLiveDebugLoading] = useState(false);
     const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+    const [isDevCameraActive, setIsDevCameraActive] = useState(false);
     const [cameraSettings, setCameraSettings] = useState<MediaTrackSettings | null>(null);
     const [cameraError, setCameraError] = useState(false);
-    const videoRef = useRef<HTMLVideoElement>(null);
+    const devWebcamRef = useRef<Webcam>(null);
 
     const [selectedLocker, setSelectedLocker] = useState<LockerInfo | null>(null);
     const [selectedActionLoading, setSelectedActionLoading] = useState(false);
@@ -399,46 +402,15 @@ export default function RecoveryPage() {
 
 
 
-    // Attach camera stream to video element AFTER React renders the <video> tag
-    useEffect(() => {
-        if (cameraStream && videoRef.current) {
-            videoRef.current.srcObject = cameraStream;
-            videoRef.current.play().catch(console.error);
-        }
-    }, [cameraStream]);
-
     const startDevCamera = async () => {
         setCameraError(false);
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { 
-                    width: { ideal: 1280 }, 
-                    height: { ideal: 720 }, 
-                    frameRate: { ideal: 30 } 
-                } 
-            });
-
-            const track = stream.getVideoTracks()[0];
-            if (track) {
-                const settings = track.getSettings();
-                setCameraSettings(settings);
-                console.log("Recovery/Dev Camera - Track Settings:", settings);
-                if (typeof track.getCapabilities === "function") {
-                    console.log("Recovery/Dev Camera - Track Capabilities:", track.getCapabilities());
-                }
-                console.log("Recovery/Dev Camera - Track Constraints:", track.getConstraints());
-            }
-
-            // Just set the state — the useEffect above will attach srcObject after render
-            setCameraStream(stream);
-        } catch { setCameraError(true); }
+        setIsDevCameraActive(true);
     };
 
     const stopDevCamera = () => {
-        cameraStream?.getTracks().forEach((t) => t.stop());
+        setIsDevCameraActive(false);
         setCameraStream(null);
         setCameraSettings(null);
-        if (videoRef.current) videoRef.current.srcObject = null;
     };
 
     useEffect(() => {
@@ -447,23 +419,24 @@ export default function RecoveryPage() {
     }, [activeTab]);
 
     const runLiveScan = async () => {
-        if (!videoRef.current) return;
+        const video = devWebcamRef.current?.video;
+        if (!video) return;
         setLiveDebugLoading(true);
         setLiveDebugResult(null);
         try {
             const canvas = document.createElement("canvas");
             canvas.width = 480; canvas.height = 480;
             const ctx = canvas.getContext("2d");
-            if (ctx && videoRef.current) {
+            if (ctx) {
                 ctx.translate(480, 0); ctx.scale(-1, 1);
                 
-                const videoWidth = videoRef.current.videoWidth || 640;
-                const videoHeight = videoRef.current.videoHeight || 480;
+                const videoWidth = video.videoWidth || 640;
+                const videoHeight = video.videoHeight || 480;
                 const sSize = Math.min(videoWidth, videoHeight);
                 const sx = (videoWidth - sSize) / 2;
                 const sy = (videoHeight - sSize) / 2;
                 
-                ctx.drawImage(videoRef.current, sx, sy, sSize, sSize, 0, 0, 480, 480);
+                ctx.drawImage(video, sx, sy, sSize, sSize, 0, 0, 480, 480);
                 const img = canvas.toDataURL("image/jpeg", 0.92);
                 setLiveDebugResult(await runFaceDebugLive(img));
             }
@@ -1134,9 +1107,28 @@ export default function RecoveryPage() {
                     {/* Camera preview with controls overlaid */}
                     <div style={{ position: "relative", height: "220px", borderRadius: "18px", overflow: "hidden", background: "#0f172a" }}>
                         {/* Video / placeholder */}
-                        {cameraStream ? (
+                        {isDevCameraActive ? (
                             <>
-                                <video ref={videoRef} style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)" }} muted playsInline />
+                                <Webcam
+                                    ref={devWebcamRef}
+                                    audio={false}
+                                    videoConstraints={{
+                                        width: 1280,
+                                        height: 720,
+                                        facingMode: "user"
+                                    }}
+                                    onUserMedia={(stream) => {
+                                        setCameraStream(stream);
+                                        const track = stream.getVideoTracks()[0];
+                                        if (track) {
+                                            setCameraSettings(track.getSettings());
+                                        }
+                                    }}
+                                    onUserMediaError={() => {
+                                        setCameraError(true);
+                                    }}
+                                    style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)" }}
+                                />
                                 {cameraSettings && (
                                     <div style={{ position: "absolute", top: "10px", left: "10px", background: "rgba(15, 23, 42, 0.75)", color: "#fff", padding: "4px 8px", borderRadius: "6px", fontSize: "10px", fontWeight: 700, fontFamily: "monospace", backdropFilter: "blur(4px)", border: "1px solid rgba(255,255,255,0.1)" }}>
                                         {cameraSettings.width}x{cameraSettings.height} @ {cameraSettings.frameRate ? Math.round(cameraSettings.frameRate) : "?"}fps

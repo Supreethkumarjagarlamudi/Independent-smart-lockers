@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import Webcam from "react-webcam";
 import { 
     ArrowLeft, 
     RefreshCw, 
@@ -46,7 +47,7 @@ export default function DepositPage() {
     // Camera and Scan status
     const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
     const [cameraError, setCameraError] = useState(false);
-    const videoRef = useRef<HTMLVideoElement>(null);
+    const webcamRef = useRef<Webcam>(null);
     const [scanProgress, setScanProgress] = useState(0);
     const [scanStatus, setScanStatus] = useState("Initializing camera...");
 
@@ -203,65 +204,16 @@ export default function DepositPage() {
         }
     };
 
-    const cameraStreamRef = useRef<MediaStream | null>(null);
     const [cameraSettings, setCameraSettings] = useState<MediaTrackSettings | null>(null);
 
     // Camera Handlers
     const startCamera = async () => {
         setCameraError(false);
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { 
-                    width: { ideal: 1280 }, 
-                    height: { ideal: 720 }, 
-                    frameRate: { ideal: 30 } 
-                } 
-            });
-            
-            // If component unmounted while getUserMedia was resolving, stop the tracks immediately
-            if (!isMountedRef.current) {
-                stream.getTracks().forEach((track) => track.stop());
-                return;
-            }
-
-            const track = stream.getVideoTracks()[0];
-            if (track) {
-                const settings = track.getSettings();
-                setCameraSettings(settings);
-                console.log("Deposit Camera - Track Settings:", settings);
-                if (typeof track.getCapabilities === "function") {
-                    console.log("Deposit Camera - Track Capabilities:", track.getCapabilities());
-                }
-                console.log("Deposit Camera - Track Constraints:", track.getConstraints());
-            }
-
-            setCameraStream(stream);
-            cameraStreamRef.current = stream;
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-                videoRef.current.play().catch(err => console.error(err));
-            }
-        } catch (err) {
-            if (isMountedRef.current) {
-                console.error("Camera error:", err);
-                setCameraError(true);
-            }
-        }
     };
 
     const stopCamera = () => {
-        const streamToStop = cameraStreamRef.current || cameraStream;
-        if (streamToStop) {
-            streamToStop.getTracks().forEach((track) => {
-                track.stop();
-            });
-            setCameraStream(null);
-            cameraStreamRef.current = null;
-            setCameraSettings(null);
-        }
-        if (videoRef.current) {
-            videoRef.current.srcObject = null;
-        }
+        setCameraStream(null);
+        setCameraSettings(null);
     };
 
     useEffect(() => {
@@ -277,7 +229,8 @@ export default function DepositPage() {
     // Capture & register face, then trigger unlock
     const captureAndRegister = async (customPaymentData?: PaymentCreateResponse | null) => {
         const activePayment = customPaymentData || paymentDataRef.current;
-        if (!videoRef.current || !activePayment) return;
+        const video = webcamRef.current?.video;
+        if (!video || !activePayment) return;
         setIsLoading(true);
         setErrorMessage("");
         
@@ -287,17 +240,17 @@ export default function DepositPage() {
             canvas.height = 480;
             const ctx = canvas.getContext("2d");
             
-            if (ctx && videoRef.current) {
+            if (ctx) {
                 ctx.translate(480, 0);
                 ctx.scale(-1, 1);
                 
-                const videoWidth = videoRef.current.videoWidth || 640;
-                const videoHeight = videoRef.current.videoHeight || 480;
+                const videoWidth = video.videoWidth || 640;
+                const videoHeight = video.videoHeight || 480;
                 const sSize = Math.min(videoWidth, videoHeight);
                 const sx = (videoWidth - sSize) / 2;
                 const sy = (videoHeight - sSize) / 2;
                 
-                ctx.drawImage(videoRef.current, sx, sy, sSize, sSize, 0, 0, 480, 480);
+                ctx.drawImage(video, sx, sy, sSize, sSize, 0, 0, 480, 480);
                 
                 const base64Image = canvas.toDataURL("image/jpeg", 0.95);
                 await registerFace(activePayment.transaction_id, base64Image);
@@ -321,9 +274,8 @@ export default function DepositPage() {
 
     // Pure Client-Side Liveness & Movement Frame Differencing Loop
     useEffect(() => {
-        if (step !== "FACE_REG" || !cameraStream || !videoRef.current) return;
-        
-        const video = videoRef.current;
+        const video = webcamRef.current?.video;
+        if (step !== "FACE_REG" || !cameraStream || !video) return;
         const canvas = document.createElement("canvas");
         canvas.width = 40;
         canvas.height = 40;
@@ -683,11 +635,25 @@ export default function DepositPage() {
                             Unable to access camera. Please check connections.
                         </div>
                     ) : (
-                        <video 
-                            ref={videoRef}
+                        <Webcam
+                            ref={webcamRef}
+                            audio={false}
+                            videoConstraints={{
+                                width: 1280,
+                                height: 720,
+                                facingMode: "user"
+                            }}
+                            onUserMedia={(stream) => {
+                                setCameraStream(stream);
+                                const track = stream.getVideoTracks()[0];
+                                if (track) {
+                                    setCameraSettings(track.getSettings());
+                                }
+                            }}
+                            onUserMediaError={() => {
+                                setCameraError(true);
+                            }}
                             className="absolute inset-0 w-full h-full object-cover transform scale-x-[-1]"
-                            muted 
-                            playsInline
                         />
                     )}
                     

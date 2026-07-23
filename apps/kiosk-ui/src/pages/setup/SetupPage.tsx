@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import Webcam from "react-webcam";
 import { 
     Cpu, 
     Camera, 
@@ -95,8 +96,6 @@ export default function SetupPage() {
     const [cameraScanning, setCameraScanning] = useState(false);
     const [faceThreshold, setFaceThreshold] = useState(80); // percentage 80%
     const [livenessEnabled, setLivenessEnabled] = useState(true);
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const mediaStreamRef = useRef<MediaStream | null>(null);
 
     // Controllers states
     const [controllersCount, setControllersCount] = useState(1);
@@ -116,49 +115,10 @@ export default function SetupPage() {
 
     // Start/Stop Webcam
     const startCamera = async () => {
-        try {
-            if (mediaStreamRef.current) stopCamera();
-            
-            const constraints = {
-                video: { 
-                    deviceId: selectedCamera ? { exact: selectedCamera } : undefined,
-                    width: { ideal: 1280 }, 
-                    height: { ideal: 720 },
-                    frameRate: { ideal: 30 }
-                }
-            };
-            
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
-
-            const track = stream.getVideoTracks()[0];
-            if (track) {
-                console.log("Setup Camera - Track Settings:", track.getSettings());
-                if (typeof track.getCapabilities === "function") {
-                    console.log("Setup Camera - Track Capabilities:", track.getCapabilities());
-                }
-                console.log("Setup Camera - Track Constraints:", track.getConstraints());
-            }
-
-            mediaStreamRef.current = stream;
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-                videoRef.current.play().catch(err => console.error("Video play failed", err));
-            }
-            setIsTestingCamera(true);
-        } catch (err) {
-            console.error("Error accessing camera:", err);
-            showToast("Unable to access camera. Please check camera permissions.", "error");
-        }
+        setIsTestingCamera(true);
     };
 
     const stopCamera = () => {
-        if (mediaStreamRef.current) {
-            mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-            mediaStreamRef.current = null;
-        }
-        if (videoRef.current) {
-            videoRef.current.srcObject = null;
-        }
         setIsTestingCamera(false);
     };
 
@@ -488,13 +448,17 @@ export default function SetupPage() {
             {/* Webcam video preview */}
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "20px" }}>
                 <div className="relative w-full max-w-md aspect-video rounded-2xl bg-black overflow-hidden shadow-lg border border-slate-300">
-                    <video 
-                        ref={videoRef}
-                        className="w-full h-full object-cover transform scale-x-[-1]"
-                        muted 
-                        playsInline
-                    />
-                    {!isTestingCamera && (
+                    {isTestingCamera ? (
+                        <Webcam
+                            audio={false}
+                            videoConstraints={{
+                                deviceId: selectedCamera ? { exact: selectedCamera } : undefined,
+                                width: 1280,
+                                height: 720
+                            }}
+                            className="w-full h-full object-cover transform scale-x-[-1]"
+                        />
+                    ) : (
                         <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 text-white text-sm text-center px-6">
                             Press "Test Camera" to view live feed
                         </div>
