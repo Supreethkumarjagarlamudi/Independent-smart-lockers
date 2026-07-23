@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database.session import Base, engine
-from app.api.endpoints import setup, payment, face, lockers, admin
+from app.api.endpoints import setup, payment, face, lockers, admin, camera
 from app.services.face_recognition_service import face_recognition_service
 from app.models.models import SystemConfig, Locker
 
@@ -78,12 +78,20 @@ app.include_router(payment.router)
 app.include_router(face.router)
 app.include_router(lockers.router)
 app.include_router(admin.router)
+app.include_router(camera.router)
 
 @app.on_event("startup")
 def startup_event():
     # Warmup and download Face Recognition models in a background thread
     # so startup is fast and non-blocking
     threading.Thread(target=face_recognition_service.initialize_models, daemon=True).start()
+    
+    # Load and apply camera calibration settings
+    from app.services.camera_control_service import CameraControlService
+    try:
+        CameraControlService().apply_saved_settings()
+    except Exception as e:
+        print(f"Failed to apply startup camera calibration: {e}")
 
 @app.get("/")
 def root():

@@ -1118,14 +1118,22 @@ export default function RecoveryPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: "22px" }}>
             {/* Live Debug */}
             <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "22px", padding: "26px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
-                    <div style={{ width: "40px", height: "40px", borderRadius: "12px", background: "#ecfdf5", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <Eye size={20} color="#10b981" />
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", marginBottom: "20px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <div style={{ width: "40px", height: "40px", borderRadius: "12px", background: "#ecfdf5", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <Eye size={20} color="#10b981" />
+                        </div>
+                        <div>
+                            <h3 style={{ fontSize: "15px", fontWeight: 800, color: "#0f172a" }}>Live Debug Inspector</h3>
+                            <p style={{ fontSize: "12px", color: "#94a3b8" }}>Capture a frame and see raw cosine similarity scores vs every enrolled face</p>
+                        </div>
                     </div>
-                    <div>
-                        <h3 style={{ fontSize: "15px", fontWeight: 800, color: "#0f172a" }}>Live Debug Inspector</h3>
-                        <p style={{ fontSize: "12px", color: "#94a3b8" }}>Capture a frame and see raw cosine similarity scores vs every enrolled face</p>
-                    </div>
+                    <button 
+                        onClick={() => navigate("/admin/calibration")}
+                        style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", borderRadius: "10px", border: "1.5px solid #2563eb", background: "#2563eb", color: "#fff", fontWeight: 700, fontSize: "12px", cursor: "pointer" }}
+                    >
+                        <Camera size={14} /> Calibration Dashboard
+                    </button>
                 </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "18px", alignItems: "start" }}>

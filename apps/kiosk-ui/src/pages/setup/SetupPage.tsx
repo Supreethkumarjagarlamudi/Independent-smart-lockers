@@ -13,6 +13,7 @@ import { SetupHeader } from "../../components/setup/SetupHeader";
 import { SetupProgress } from "../../components/setup/SetupProgress";
 import { SetupNavigation } from "../../components/setup/SetupNavigation";
 import { AppButton } from "../../components/ui/AppButton";
+import { CameraCalibrationDashboard } from "../maintenance/CameraCalibration";
 import { 
     getControllers, 
     getSetupStatus,
@@ -95,6 +96,7 @@ export default function SetupPage() {
     const [cameraScanning, setCameraScanning] = useState(false);
     const [faceThreshold, setFaceThreshold] = useState(80); // percentage 80%
     const [livenessEnabled, setLivenessEnabled] = useState(true);
+    const [showCalibrationModal, setShowCalibrationModal] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
     const mediaStreamRef = useRef<MediaStream | null>(null);
 
@@ -501,16 +503,28 @@ export default function SetupPage() {
                     )}
                 </div>
 
-                <AppButton 
-                    onClick={isTestingCamera ? stopCamera : startCamera}
-                    className={`px-7 py-2.5 rounded-lg font-bold shadow-md transition-all active:scale-[0.98] ${
-                        isTestingCamera 
-                        ? "bg-rose-500 text-white hover:bg-rose-600" 
-                        : "bg-blue-600 text-white hover:bg-blue-700"
-                    }`}
-                >
-                    {isTestingCamera ? "Stop Preview" : "Test Camera"}
-                </AppButton>
+                <div style={{ display: "flex", gap: "12px", marginTop: "10px", justifyContent: "center", width: "100%" }}>
+                    <AppButton 
+                        onClick={isTestingCamera ? stopCamera : startCamera}
+                        className={`px-6 py-2.5 rounded-lg font-bold shadow-md transition-all active:scale-[0.98] ${
+                            isTestingCamera 
+                            ? "bg-rose-500 text-white hover:bg-rose-600" 
+                            : "bg-blue-600 text-white hover:bg-blue-700"
+                        }`}
+                    >
+                        {isTestingCamera ? "Stop Preview" : "Test Camera"}
+                    </AppButton>
+                    <AppButton
+                        type="button"
+                        onClick={() => {
+                            stopCamera();
+                            setShowCalibrationModal(true);
+                        }}
+                        className="px-6 py-2.5 rounded-lg font-bold shadow-md bg-slate-800 text-white hover:bg-slate-900 transition-all active:scale-[0.98]"
+                    >
+                        Tuning & Calibration
+                    </AppButton>
+                </div>
             </div>
         </div>
     );
@@ -938,6 +952,12 @@ export default function SetupPage() {
                     onBack={handleBack}
                 />
             </SetupLayout>
+
+            {showCalibrationModal && (
+                <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000, background: "#ffffff", overflowY: "auto" }}>
+                    <CameraCalibrationDashboard onClose={() => setShowCalibrationModal(false)} />
+                </div>
+            )}
         </>
     );
 }
