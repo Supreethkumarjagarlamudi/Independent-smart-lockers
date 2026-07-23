@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libtiff-dev \
     python3-numpy \
     python3-opencv \
+    v4l-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Map Python module path to use the system-installed packages

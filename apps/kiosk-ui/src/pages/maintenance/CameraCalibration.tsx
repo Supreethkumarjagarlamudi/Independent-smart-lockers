@@ -147,10 +147,10 @@ export function CameraCalibrationDashboard({ onClose }: { onClose?: () => void }
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
         
-        // Downscale frame to 320x240 for RPi optimization
+        // Downscale frame to 320x320 for RPi optimization (multiples of 32 for YuNet compatibility)
         canvas.width = 320;
-        canvas.height = 240;
-        ctx.drawImage(video, 0, 0, 320, 240);
+        canvas.height = 320;
+        ctx.drawImage(video, 0, 0, 320, 320);
         
         const base64Image = canvas.toDataURL("image/jpeg", 0.85);
         
@@ -203,8 +203,8 @@ export function CameraCalibrationDashboard({ onClose }: { onClose?: () => void }
             if (!ctx) return;
             
             canvas.width = 320;
-            canvas.height = 240;
-            ctx.drawImage(video, 0, 0, 320, 240);
+            canvas.height = 320;
+            ctx.drawImage(video, 0, 0, 320, 320);
             const base64Image = canvas.toDataURL("image/jpeg", 0.85);
 
             const res = await fetch(`${APP_CONFIG.API_BASE_URL}/api/calibration/autotune`, {
@@ -252,8 +252,8 @@ export function CameraCalibrationDashboard({ onClose }: { onClose?: () => void }
             if (!ctx) return;
             
             canvas.width = 320;
-            canvas.height = 240;
-            ctx.drawImage(video, 0, 0, 320, 240);
+            canvas.height = 320;
+            ctx.drawImage(video, 0, 0, 320, 320);
             const base64Image = canvas.toDataURL("image/jpeg", 0.85);
 
             const res = await fetch(`${APP_CONFIG.API_BASE_URL}/api/calibration/test-recognition`, {
@@ -327,16 +327,55 @@ export function CameraCalibrationDashboard({ onClose }: { onClose?: () => void }
 
     return (
         <div style={{ padding: "24px", maxWidth: "1280px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "20px" }}>
-                
-                {/* Notification toast */}
-                {actionMessage && (
-                    <div style={{ position: "fixed", top: "24px", left: "50%", transform: "translateX(-50%)", zIndex: 10000, background: "#0f172a", color: "#fff", padding: "14px 28px", borderRadius: "16px", fontWeight: 700, fontSize: "14px", boxShadow: "0 20px 45px rgba(0,0,0,0.25)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                        {actionMessage}
-                    </div>
-                )}
+            <style>{`
+                .calibration-grid {
+                    display: grid;
+                    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+                    gap: 24px;
+                }
+                .metrics-grid {
+                    display: grid;
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 14px;
+                }
+                .video-container {
+                    position: relative;
+                    width: 100%;
+                    height: 420px;
+                    background: #090d16;
+                    border-radius: 18px;
+                    overflow: hidden;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                @media (max-width: 1024px) {
+                    .calibration-grid {
+                        grid-template-columns: 1fr;
+                    }
+                    .video-container {
+                        height: 380px;
+                    }
+                }
+                @media (max-width: 640px) {
+                    .metrics-grid {
+                        grid-template-columns: 1fr;
+                    }
+                    .video-container {
+                        height: 300px;
+                    }
+                }
+            `}</style>
+            
+            {/* Notification toast */}
+            {actionMessage && (
+                <div style={{ position: "fixed", top: "24px", left: "50%", transform: "translateX(-50%)", zIndex: 10000, background: "#0f172a", color: "#fff", padding: "14px 28px", borderRadius: "16px", fontWeight: 700, fontSize: "14px", boxShadow: "0 20px 45px rgba(0,0,0,0.25)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                    {actionMessage}
+                </div>
+            )}
 
-                {/* Header */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            {/* Header */}
+            <div style={{ display: "flex", flexFlow: "row wrap", alignItems: "center", justifyContent: "space-between", gap: "16px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                         <button onClick={onClose || (() => navigate("/admin"))} style={{ width: "42px", height: "42px", borderRadius: "50%", background: "#fff", border: "1px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#334155" }}>
                             <ArrowLeft size={18} />
@@ -358,7 +397,7 @@ export function CameraCalibrationDashboard({ onClose }: { onClose?: () => void }
                 </div>
 
                 {/* Dashboard Grid */}
-                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.2fr) minmax(0, 1fr)", gap: "24px" }}>
+                <div className="calibration-grid">
                     
                     {/* Left Panel: Camera Feed & Diagnostics */}
                     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
@@ -375,7 +414,7 @@ export function CameraCalibrationDashboard({ onClose }: { onClose?: () => void }
                                 </div>
                             </div>
 
-                            <div style={{ position: "relative", width: "100%", height: "420px", background: "#090d16", borderRadius: "18px", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <div className="video-container">
                                 {/* Hidden source video */}
                                 <video ref={videoRef} style={{ display: "none" }} muted playsInline />
                                 {/* Hidden downscale canvas */}
@@ -405,7 +444,7 @@ export function CameraCalibrationDashboard({ onClose }: { onClose?: () => void }
                         <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "24px", padding: "24px", display: "flex", flexDirection: "column", gap: "16px" }}>
                             <h3 style={{ fontSize: "15px", fontWeight: 800, color: "#0f172a", margin: 0 }}>Image & Biometric Metrics</h3>
                             
-                            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "14px" }}>
+                            <div className="metrics-grid">
                                 
                                 {/* Overall Score */}
                                 <div style={{ background: "#f8fafc", borderRadius: "16px", padding: "16px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", border: "1px solid #f1f5f9", textAlign: "center" }}>
