@@ -228,5 +228,21 @@ def cancel_payment(req: CancelPaymentRequest, db: Session = Depends(get_db)):
         db.commit()
         return {"success": True, "message": f"Transaction cancelled. Locker {tx.locker_id} released."}
         
-    return {"success": False, "message": "Transaction is not pending."}
+    elif tx.payment_status == "PAID" and not tx.face_encoding:
+        if tx.flow_type == "DEPOSIT":
+            locker = db.query(Locker).filter(Locker.id == tx.locker_id).first()
+            if locker and locker.status == "RESERVED":
+                locker.status = "AVAILABLE"
+                db.add(locker)
+                
+        tx.payment_status = "FAILED"
+        db.add(tx)
+        db.add(SystemLog(
+            level="ERROR",
+            message=f"Transaction {tx.transaction_id} paid but face registration timed out/failed. Locker {tx.locker_id} set back to AVAILABLE."
+        ))
+        db.commit()
+        return {"success": True, "message": f"Transaction timed out after payment. Locker {tx.locker_id} released."}
+        
+    return {"success": False, "message": "Transaction cannot be cancelled."}
 

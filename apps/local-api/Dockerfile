@@ -23,6 +23,14 @@ COPY requirements.txt .
 # Install pure Python packages from requirements.txt via standard PyPI
 RUN pip install --no-cache-dir -r requirements.txt
 
+ARG ADMIN_PASSWORD=admin123
+ARG RAZORPAY_KEY_ID=""
+ARG RAZORPAY_KEY_SECRET=""
+
+ENV ADMIN_PASSWORD=$ADMIN_PASSWORD
+ENV RAZORPAY_KEY_ID=$RAZORPAY_KEY_ID
+ENV RAZORPAY_KEY_SECRET=$RAZORPAY_KEY_SECRET
+
 COPY . .
 
 EXPOSE 8000

@@ -161,6 +161,7 @@ def initialize_cluster(schema: ConfigSetupSchema, update: Optional[bool] = False
         # Fallback to env keys if admin left them blank
         final_key_id = schema.razorpay_key_id.strip() if schema.razorpay_key_id and schema.razorpay_key_id.strip() else os.getenv("RAZORPAY_KEY_ID", "")
         final_key_secret = schema.razorpay_key_secret.strip() if schema.razorpay_key_secret and schema.razorpay_key_secret.strip() else os.getenv("RAZORPAY_KEY_SECRET", "")
+        final_admin_password = schema.admin_password.strip() if schema.admin_password and schema.admin_password.strip() else os.getenv("ADMIN_PASSWORD", "admin123")
 
         # Check if update mode
         if update:
@@ -179,8 +180,7 @@ def initialize_cluster(schema: ConfigSetupSchema, update: Optional[bool] = False
                 config.lockers_count = schema.lockers_count
                 config.razorpay_key_id = final_key_id
                 config.razorpay_key_secret = final_key_secret
-                if schema.admin_password:
-                    config.admin_password = schema.admin_password
+                config.admin_password = final_admin_password
                 if schema.face_threshold is not None:
                     config.face_threshold = schema.face_threshold
                 if schema.liveness_enabled is not None:
@@ -200,7 +200,7 @@ def initialize_cluster(schema: ConfigSetupSchema, update: Optional[bool] = False
                     lockers_count=schema.lockers_count,
                     razorpay_key_id=final_key_id,
                     razorpay_key_secret=final_key_secret,
-                    admin_password=schema.admin_password if schema.admin_password else "admin123",
+                    admin_password=final_admin_password,
                     face_threshold=schema.face_threshold if schema.face_threshold is not None else 0.80,
                     liveness_enabled=schema.liveness_enabled if schema.liveness_enabled is not None else True,
                     initialized=True
@@ -226,7 +226,7 @@ def initialize_cluster(schema: ConfigSetupSchema, update: Optional[bool] = False
                 lockers_count=schema.lockers_count,
                 razorpay_key_id=final_key_id,
                 razorpay_key_secret=final_key_secret,
-                admin_password=schema.admin_password if schema.admin_password else "admin123",
+                admin_password=final_admin_password,
                 face_threshold=schema.face_threshold if schema.face_threshold is not None else 0.80,
                 liveness_enabled=schema.liveness_enabled if schema.liveness_enabled is not None else True,
                 initialized=True

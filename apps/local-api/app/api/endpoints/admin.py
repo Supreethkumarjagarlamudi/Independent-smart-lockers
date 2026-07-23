@@ -288,7 +288,8 @@ class ChangePasswordRequest(BaseModel):
 @router.post("/login")
 def admin_login(req: AdminLoginRequest, db: Session = Depends(get_db)):
     config = db.query(SystemConfig).first()
-    expected_password = config.admin_password if (config and config.admin_password) else "admin123"
+    env_password = os.getenv("ADMIN_PASSWORD")
+    expected_password = env_password if env_password else (config.admin_password if (config and config.admin_password) else "admin123")
     
     if req.password == expected_password:
         return {
@@ -301,25 +302,10 @@ def admin_login(req: AdminLoginRequest, db: Session = Depends(get_db)):
 
 @router.post("/change-password")
 def change_admin_password(req: ChangePasswordRequest, db: Session = Depends(get_db)):
-    config = db.query(SystemConfig).first()
-    if not config:
-        raise HTTPException(status_code=404, detail="System configuration not initialized.")
-        
-    expected_password = config.admin_password if config.admin_password else "admin123"
-    if req.old_password != expected_password:
-        raise HTTPException(status_code=400, detail="Current password incorrect.")
-        
-    if not req.new_password or len(req.new_password.strip()) < 4:
-        raise HTTPException(status_code=400, detail="New password must be at least 4 characters.")
-        
-    config.admin_password = req.new_password.strip()
-    db.add(config)
-    db.commit()
-    
-    return {
-        "success": True,
-        "message": "Password changed successfully."
-    }
+    raise HTTPException(
+        status_code=400, 
+        detail="Password management is disabled on frontend. Set the ADMIN_PASSWORD environment variable in the backend container instead."
+    )
 
 
 class UpdateConfigRequest(BaseModel):

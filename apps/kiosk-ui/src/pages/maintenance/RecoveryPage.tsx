@@ -23,7 +23,6 @@ import {
     DollarSign,
     Lock,
     Settings,
-    QrCode,
     CreditCard,
     Calendar,
     Menu,
@@ -41,7 +40,6 @@ import {
     getAllTransactions,
     getRevenueStats,
     adminLogin,
-    changeAdminPassword,
     getSystemConfig,
     updateSystemConfig,
     factoryReset,
@@ -308,16 +306,9 @@ export default function RecoveryPage() {
 
     // Authentication states
     const [isAuthenticated, setIsAuthenticated] = useState(() => sessionStorage.getItem("admin_authenticated") === "true");
-    const [isPasswordDefault, setIsPasswordDefault] = useState(() => sessionStorage.getItem("admin_password_default") === "true");
     const [passwordInput, setPasswordInput] = useState("");
     const [authError, setAuthError] = useState("");
     const [authLoading, setAuthLoading] = useState(false);
-
-    // Password change states
-    const [changePwOld, setChangePwOld] = useState("");
-    const [changePwNew, setChangePwNew] = useState("");
-    const [changePwConfirm, setChangePwConfirm] = useState("");
-    const [changePwLoading, setChangePwLoading] = useState(false);
 
     // Revenue analytics states
     const [revenue, setRevenue] = useState<RevenueStats | null>(null);
@@ -335,11 +326,10 @@ export default function RecoveryPage() {
     const [configHourlyRate, setConfigHourlyRate] = useState(0);
     const [configMaxHours, setConfigMaxHours] = useState(0);
     const [configGracePeriod, setConfigGracePeriod] = useState(0);
-    const [configRazorpayKeyId, setConfigRazorpayKeyId] = useState("");
-    const [configRazorpayKeySecret, setConfigRazorpayKeySecret] = useState("");
     const [configFaceThreshold, setConfigFaceThreshold] = useState(80); // percentage 80%
     const [configLivenessEnabled, setConfigLivenessEnabled] = useState(true);
-    const [showConfigKeySecret, setShowConfigKeySecret] = useState(false);
+    const [configRazorpayKeyId, setConfigRazorpayKeyId] = useState("");
+    const [configRazorpayKeySecret, setConfigRazorpayKeySecret] = useState("");
     const [configLoading, setConfigLoading] = useState(false);
 
     // Detailed transactions states
@@ -533,40 +523,13 @@ export default function RecoveryPage() {
             const res = await adminLogin(passwordInput);
             if (res.success) {
                 sessionStorage.setItem("admin_authenticated", "true");
-                sessionStorage.setItem("admin_password_default", res.is_default ? "true" : "false");
                 setIsAuthenticated(true);
-                setIsPasswordDefault(res.is_default);
                 setPasswordInput("");
             }
         } catch (err: unknown) {
             setAuthError((err as Error).message || "Authentication failed.");
         } finally {
             setAuthLoading(false);
-        }
-    };
-
-    const handlePasswordChange = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setErrorMessage(""); setSuccessMessage("");
-        if (changePwNew !== changePwConfirm) {
-            setErrorMessage("New passwords do not match.");
-            return;
-        }
-        setChangePwLoading(true);
-        try {
-            const res = await changeAdminPassword(changePwOld, changePwNew);
-            if (res.success) {
-                setSuccessMessage("Password changed successfully.");
-                sessionStorage.setItem("admin_password_default", "false");
-                setIsPasswordDefault(false);
-                setChangePwOld("");
-                setChangePwNew("");
-                setChangePwConfirm("");
-            }
-        } catch (err: unknown) {
-            setErrorMessage((err as Error).message || "Failed to change password.");
-        } finally {
-            setChangePwLoading(false);
         }
     };
 
@@ -927,60 +890,9 @@ export default function RecoveryPage() {
 
     // ─── Settings Tab ─────────────────────────────────────────────────────────
     const renderSettingsTab = () => (
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "22px", alignItems: "start" }}>
-            {/* Change Password Panel */}
-            <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "22px", padding: "26px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px", borderBottom: "1px solid #f1f5f9", paddingBottom: "14px", marginBottom: "18px" }}>
-                    <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <Lock size={18} color="#ef4444" />
-                    </div>
-                    <h3 style={{ fontSize: "15px", fontWeight: 800, color: "#0f172a" }}>Update Password</h3>
-                </div>
-
-                <form onSubmit={handlePasswordChange} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                    <div>
-                        <label style={{ fontSize: "11px", fontWeight: 700, color: "#64748b", textTransform: "uppercase", display: "block", marginBottom: "5px" }}>Current Password</label>
-                        <input
-                            type="password"
-                            value={changePwOld}
-                            onChange={(e) => setChangePwOld(e.target.value)}
-                            required
-                            style={{ width: "100%", height: "40px", border: "1.5px solid #e2e8f0", borderRadius: "11px", padding: "0 12px", fontSize: "13px", color: "#334155" }}
-                        />
-                    </div>
-                    <div>
-                        <label style={{ fontSize: "11px", fontWeight: 700, color: "#64748b", textTransform: "uppercase", display: "block", marginBottom: "5px" }}>New Password</label>
-                        <input
-                            type="password"
-                            value={changePwNew}
-                            onChange={(e) => setChangePwNew(e.target.value)}
-                            required
-                            style={{ width: "100%", height: "40px", border: "1.5px solid #e2e8f0", borderRadius: "11px", padding: "0 12px", fontSize: "13px", color: "#334155" }}
-                        />
-                    </div>
-                    <div>
-                        <label style={{ fontSize: "11px", fontWeight: 700, color: "#64748b", textTransform: "uppercase", display: "block", marginBottom: "5px" }}>Confirm New Password</label>
-                        <input
-                            type="password"
-                            value={changePwConfirm}
-                            onChange={(e) => setChangePwConfirm(e.target.value)}
-                            required
-                            style={{ width: "100%", height: "40px", border: "1.5px solid #e2e8f0", borderRadius: "11px", padding: "0 12px", fontSize: "13px", color: "#334155" }}
-                        />
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={changePwLoading}
-                        style={{ height: "42px", background: "#ef4444", color: "#fff", border: "none", borderRadius: "11px", fontWeight: 700, fontSize: "13px", cursor: "pointer", marginTop: "6px" }}
-                    >
-                        {changePwLoading ? "Changing..." : "Change Password"}
-                    </button>
-                </form>
-            </div>
-
+        <div style={{ display: "flex", flexDirection: "column", gap: "22px", width: "100%" }}>
             {/* Cluster Configuration Panel */}
-            <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "22px", padding: "26px" }}>
+            <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "22px", padding: "26px", width: "100%" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", borderBottom: "1px solid #f1f5f9", paddingBottom: "14px", marginBottom: "18px" }}>
                     <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <Server size={18} color="#2563eb" />
@@ -1073,65 +985,7 @@ export default function RecoveryPage() {
                         </div>
                     </div>
 
-                    <div style={{ marginTop: "10px", padding: "14px", border: "1px solid #e2e8f0", borderRadius: "12px", backgroundColor: "#f8fafc", display: "flex", flexDirection: "column", gap: "10px" }}>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                            <span style={{ fontSize: "11px", fontWeight: "bold", color: "#334155" }}>Razorpay Credentials {configHourlyRate > 0 ? "(Required)" : "(Optional)"}</span>
-                            <button
-                                type="button"
-                                onClick={() => setShowAdminQrModal(true)}
-                                style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    gap: "6px",
-                                    padding: "6px 14px",
-                                    borderRadius: "10px",
-                                    backgroundColor: "#eff6ff",
-                                    color: "#1d4ed8",
-                                    border: "1px solid #bfdbfe",
-                                    fontSize: "12px",
-                                    fontWeight: 700,
-                                    cursor: "pointer",
-                                    whiteSpace: "nowrap"
-                                }}
-                            >
-                                <QrCode size={14} />
-                                <span>Scan QR</span>
-                            </button>
-                        </div>
-                        
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                            <div>
-                                <label style={{ fontSize: "9px", fontWeight: 700, color: "#64748b", textTransform: "uppercase", display: "block", marginBottom: "3px" }}>Razorpay Key ID</label>
-                                <input
-                                    type="text"
-                                    placeholder="rzp_test_..."
-                                    value={configRazorpayKeyId}
-                                    onChange={(e) => setConfigRazorpayKeyId(e.target.value)}
-                                    style={{ width: "100%", height: "34px", border: "1.5px solid #cbd5e1", borderRadius: "8px", padding: "0 8px", fontSize: "12px", color: "#334155", backgroundColor: "#fff" }}
-                                />
-                            </div>
-                            <div>
-                                <label style={{ fontSize: "9px", fontWeight: 700, color: "#64748b", textTransform: "uppercase", display: "block", marginBottom: "3px" }}>Razorpay Key Secret</label>
-                                <div className="relative" style={{ display: "flex", alignItems: "center" }}>
-                                    <input
-                                        type={showConfigKeySecret ? "text" : "password"}
-                                        placeholder="••••••••••••••••"
-                                        value={configRazorpayKeySecret}
-                                        onChange={(e) => setConfigRazorpayKeySecret(e.target.value)}
-                                        style={{ width: "100%", height: "34px", border: "1.5px solid #cbd5e1", borderRadius: "8px", padding: "0 40px 0 8px", fontSize: "12px", color: "#334155", backgroundColor: "#fff" }}
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowConfigKeySecret(!showConfigKeySecret)}
-                                        style={{ position: "absolute", right: "8px", background: "none", border: "none", color: "#64748b", fontSize: "10px", fontWeight: "bold", cursor: "pointer" }}
-                                    >
-                                        {showConfigKeySecret ? "Hide" : "Show"}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+
 
                     {/* Face Settings */}
                     <div style={{ marginTop: "10px", padding: "14px", border: "1px solid #e2e8f0", borderRadius: "12px", backgroundColor: "#f8fafc", display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -1553,20 +1407,7 @@ export default function RecoveryPage() {
                     </header>
 
                     <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", padding: isMobile ? "16px 12px" : "26px 30px" }}>
-                        {isPasswordDefault && (
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "9px", padding: "13px 16px", borderRadius: "13px", background: "#fffbeb", border: "1px solid #fde68a", color: "#b45309", marginBottom: "18px", fontSize: "13px", fontWeight: 600 }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                    <AlertTriangle size={17} />
-                                    <span>Warning: You are logged in with the default password. Please update it immediately.</span>
-                                </div>
-                                <button 
-                                    onClick={() => setActiveTab("SETTINGS")}
-                                    style={{ border: "none", background: "#d97706", color: "#fff", padding: "6px 12px", borderRadius: "8px", fontWeight: 700, cursor: "pointer", fontSize: "11px" }}
-                                >
-                                    Change Password
-                                </button>
-                            </div>
-                        )}
+
 
                         {successMessage && (
                             <div style={{ display: "flex", alignItems: "center", gap: "9px", padding: "13px 16px", borderRadius: "13px", background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", marginBottom: "18px", fontSize: "13px", fontWeight: 600 }}>
